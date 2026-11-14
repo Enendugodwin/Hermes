@@ -78,3 +78,14 @@ def test_pooler_url_is_recognised() -> None:
     assert settings.is_postgres is True
     assert settings.database_url.startswith("postgresql+psycopg://")
     assert "sslmode=require" in settings.database_url
+def test_neon_pooler_is_recognised() -> None:
+    settings = Settings(
+        database_url=(
+            "postgresql://u:p@ep-proud-surf-bc0luhk5-pooler.c-16.us-east-1.aws.neon.tech/neondb"
+        ),
+        _env_file=None,
+    )  # type: ignore[call-arg]
+
+    assert settings.uses_pooler is True
+    assert settings.is_postgres is True
+    assert settings.database_url.startswith("postgresql+psycopg://")

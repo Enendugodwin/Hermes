@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from functools import lru_cache
 from typing import Any
 
@@ -36,18 +36,16 @@ def get_engine() -> Engine:
         # SQLite has no server-side pool; allow cross-thread use for tests/dev.
         kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30}
     else:
-        # Timestamps are stored as timestamptz; pin the session time zone to UTC
-        # so API responses never depend on the server's local zone.
-        connect_args: dict[str, object] = {
-            # A runaway analytical query must fail instead of pinning a worker and
-            # exhausting the device; 60 s is above every measured read (<= 0.25 s)
-            # and above an incremental rollup refresh.
-            "options": "-c timezone=UTC -c statement_timeout=60000"
-        }
+        connect_args: dict[str, object] = {}
         if settings.uses_pooler:
-            # Transaction pooling (Supavisor/pgbouncer) cannot keep server-side
-            # prepared statements between checkouts; psycopg 3 disables them.
+            # Transaction pooling (Supavisor, pgbouncer, Neon) cannot keep
+            # server-side prepared statements between checkouts, and some
+            # poolers reject libpq ``options`` as a startup parameter.
             connect_args["prepare_threshold"] = None
+        else:
+            # Pin the session time zone and bound runaway analytical queries.
+            # 60 s is above every measured read (<= 0.25 s).
+            connect_args["options"] = "-c timezone=UTC -c statement_timeout=60000"
         kwargs["connect_args"] = connect_args
         if _serverless() or settings.uses_pooler:
             # One connection per invocation: a pooled connection would outlive
@@ -60,7 +58,26 @@ def get_engine() -> Engine:
     engine = create_engine(settings.database_url, **kwargs)
     if settings.is_sqlite:
         _configure_sqlite(engine)
+    else:
+        _configure_postgres_timezone(engine)
     return engine
+
+
+def _configure_postgres_timezone(engine: Engine) -> None:
+    """Pin UTC on pooled connections that cannot take libpq ``options``."""
+
+    @event.listens_for(engine, "connect")
+    def _utc_session(dbapi_connection: Any, _record: Any) -> None:
+        # Poolers do not accept ``options`` at startup, but a session-level SET
+        # is allowed. Failing here must not break the connection.
+        try:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("SET TIME ZONE 'UTC'")
+            cursor.close()
+            dbapi_connection.commit()
+        except Exception:  # noqa: BLE001 - best effort: Neon is UTC by default
+            with suppress(Exception):
+                dbapi_connection.rollback()
 
 
 def _configure_sqlite(engine: Engine) -> None:

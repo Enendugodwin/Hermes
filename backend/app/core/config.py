@@ -171,9 +171,14 @@ class Settings(BaseSettings):
 
     @property
     def uses_pooler(self) -> bool:
-        """True for a Supavisor/pgbouncer endpoint (transaction pooling)."""
+        """True for a transaction-pooling endpoint (Supavisor, pgbouncer, Neon)."""
         parts = urlsplit(self.database_url)
-        return parts.port == 6543 or "pooler.supabase.com" in (parts.hostname or "").lower()
+        host = (parts.hostname or "").lower()
+        return (
+            parts.port == 6543
+            or "pooler.supabase.com" in host
+            or "-pooler." in host
+        )
 
     @property
     def is_postgres(self) -> bool:
