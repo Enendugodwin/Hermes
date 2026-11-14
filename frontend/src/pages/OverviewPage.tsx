@@ -580,14 +580,14 @@ export function OverviewPage() {
           type="button"
           onClick={() => setMobilePanelsOpen(true)}
           aria-expanded={mobilePanelsOpen}
-          className="absolute bottom-[86px] right-3 z-30 inline-flex h-8 items-center gap-1.5 rounded-control border border-line/15 bg-panel/90 px-2.5 text-2xs font-medium text-muted backdrop-blur-glass lg:hidden"
+          className="pointer-events-auto absolute bottom-[86px] right-3 z-30 inline-flex h-8 items-center gap-1.5 rounded-control border border-line/15 bg-panel/90 px-2.5 text-2xs font-medium text-muted backdrop-blur-glass lg:hidden"
         >
           <PanelRightOpen className="size-3.5 text-accent" aria-hidden />
           Panels
         </button>
 
         {mobilePanelsOpen ? (
-          <div className="absolute inset-0 z-40 lg:hidden">
+          <div className="pointer-events-auto absolute inset-0 z-40 lg:hidden">
             <button
               type="button"
               onClick={() => setMobilePanelsOpen(false)}

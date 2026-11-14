@@ -30,14 +30,17 @@ export function applyMapTheme(
   map: MapLibreMap,
   theme: MapTheme,
   harmonized = false,
+  updateTiles = true,
 ): void {
   map.setPaintProperty("background", "background-color", theme.background);
 
   if (map.getLayer(BASEMAP_LAYER)) {
-    const source = map.getSource(BASEMAP_SOURCE) as
-      | { setTiles?: (tiles: string[]) => void }
-      | undefined;
-    source?.setTiles?.(theme.tiles);
+    if (updateTiles) {
+      const source = map.getSource(BASEMAP_SOURCE) as
+        | { setTiles?: (tiles: string[]) => void }
+        | undefined;
+      source?.setTiles?.(theme.tiles);
+    }
     const paint = buildBasemapLayer(theme).paint as Record<string, unknown>;
     for (const [key, value] of Object.entries(paint)) {
       map.setPaintProperty(BASEMAP_LAYER, key, value);
@@ -301,6 +304,7 @@ export function FireMapCanvas({
         map,
         MAP_THEMES[latest.current.theme],
         latest.current.harmonized,
+        false,
       );
 
       for (const layer of ["fire-hits", "fire-cells"]) {
