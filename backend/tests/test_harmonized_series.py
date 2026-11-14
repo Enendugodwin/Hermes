@@ -43,6 +43,25 @@ def test_series_reconciles_and_subtracts_matched_viirs(
     assert "not fires" in notes
 
 
+def test_match_outcomes_series_is_daily_and_status_split(
+    client: TestClient, loaded_fixture: dict
+) -> None:
+    body = client.get("/api/v1/harmonization/matches/series", params=WINDOW).json()
+
+    totals = body["totals"]
+    assert totals["matches"] == totals["probable"] + totals["possible"]
+    assert totals["matches"] > 0
+    assert totals["rejected"] >= 0
+
+    days = body["days"]
+    assert [day["date"] for day in days] == sorted(day["date"] for day in days)
+    assert sum(day["matches"] for day in days) == totals["matches"]
+    assert all(
+        day["matches"] == day["probable"] + day["possible"] for day in days
+    )
+    assert body["coverage"]["days_with_associations"] > 0
+
+
 def test_series_without_associations_says_so(client: TestClient) -> None:
     body = client.get(
         "/api/v1/harmonization/series",

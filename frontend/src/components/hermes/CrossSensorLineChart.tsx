@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 
-import type { HarmonizedSeries } from "@/lib/intelligenceApi";
+import type { MatchSeries } from "@/lib/intelligenceApi";
 import { formatCount } from "@/lib/format";
 
 type StatusKey = "matches_probable" | "matches_possible" | "matches_rejected";
@@ -39,7 +39,7 @@ export function CrossSensorLineChart({
   series,
   loading,
 }: {
-  series: HarmonizedSeries | undefined;
+  series: MatchSeries | undefined;
   loading?: boolean;
 }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -49,7 +49,12 @@ export function CrossSensorLineChart({
     return <div className="h-[220px] animate-pulse rounded-control bg-line/[0.04]" aria-hidden />;
   }
 
-  const days = series?.days ?? [];
+  const days = (series?.days ?? []).map((day) => ({
+    date: day.date,
+    matches_probable: day.probable,
+    matches_possible: day.possible,
+    matches_rejected: day.rejected,
+  }));
   if (days.length === 0) {
     return (
       <div className="flex h-[150px] items-center justify-center rounded-control border border-dashed border-line/[0.1]">
@@ -125,9 +130,9 @@ export function CrossSensorLineChart({
             <span className="ml-1 text-3xs text-faint">associations</span>
           </div>
           <div className="mt-[4px] font-mono text-3xs text-faint">
-            {formatCount(series?.totals.matches_probable ?? 0)} probable ·{" "}
-            {formatCount(series?.totals.matches_possible ?? 0)} possible ·{" "}
-            {formatCount(series?.totals.matches_rejected ?? 0)} rejected
+            {formatCount(series?.totals.probable ?? 0)} probable ·{" "}
+            {formatCount(series?.totals.possible ?? 0)} possible ·{" "}
+            {formatCount(series?.totals.rejected ?? 0)} rejected
           </div>
         </div>
 

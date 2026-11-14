@@ -1,5 +1,5 @@
 import { MiniLineChart } from "@/components/hermes/MiniLineChart";
-import type { HarmonizedSeries } from "@/lib/intelligenceApi";
+import type { MatchSeries } from "@/lib/intelligenceApi";
 import { formatCount } from "@/lib/format";
 
 /**
@@ -11,7 +11,7 @@ export function AssociationChart({
   series,
   loading,
 }: {
-  series: HarmonizedSeries | undefined;
+  series: MatchSeries | undefined;
   loading?: boolean;
 }) {
   const points = (series?.days ?? []).map((day) => ({
@@ -44,7 +44,7 @@ export function AssociationChart({
       <p className="mt-[3px] text-3xs font-light leading-relaxed text-faint">
         Probable + possible MODIS/VIIRS pairs per UTC day
         {coverage
-          ? ` · ${formatCount(coverage.days_with_matches)} of ${formatCount(coverage.days)} days with associations`
+          ? ` · ${formatCount(coverage.days_with_associations)} of ${formatCount(coverage.days)} days with associations`
           : ""}
       </p>
     </div>

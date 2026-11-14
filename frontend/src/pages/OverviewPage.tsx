@@ -44,7 +44,7 @@ import {
   type FireQuery,
   type GeoPlace,
 } from "@/lib/mapApi";
-import { useDashboardOverview, useHarmonizedSeries, useSystemStatus } from "@/lib/queries";
+import { useDashboardOverview, useMatchSeries, useSystemStatus } from "@/lib/queries";
 import { formatDateTimeUtc } from "@/lib/time";
 import { useUiStore } from "@/store/ui";
 
@@ -146,7 +146,7 @@ export function OverviewPage() {
   const storedObservations = status?.data.observations_stored ?? 0;
   const syntheticStored = status?.data.synthetic_observations ?? 0;
   const allSynthetic = syntheticStored > 0 && syntheticStored === storedObservations;
-  const harmonized = useHarmonizedSeries(dateRange.start, dateRange.end);
+  const matchSeries = useMatchSeries(dateRange.start, dateRange.end);
 
   const analytics = useQuery({
     queryKey: ["overview-analytics", dateRange.start, dateRange.end, allSynthetic],
@@ -455,7 +455,7 @@ export function OverviewPage() {
             </div>
 
             <div className="mt-[10px] border-t border-line/[0.07] pt-[9px]">
-              <AssociationChart series={harmonized.data} loading={harmonized.isLoading} />
+              <AssociationChart series={matchSeries.data} loading={matchSeries.isLoading} />
             </div>
 
             <p className="mt-[8px] border-t border-line/[0.07] pt-[8px] text-3xs font-light leading-relaxed text-faint">
@@ -647,7 +647,7 @@ export function OverviewPage() {
                   title="Cross-sensor associations"
                   eyebrow="VIIRS matched to MODIS"
                 >
-                  <AssociationChart series={harmonized.data} loading={harmonized.isLoading} />
+                  <AssociationChart series={matchSeries.data} loading={matchSeries.isLoading} />
                 </GlassPanel>
 
                 <GlassPanel title="Sensor network" eyebrow="MODIS · VIIRS">

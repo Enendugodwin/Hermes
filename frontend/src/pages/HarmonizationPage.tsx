@@ -22,7 +22,7 @@ import { SyntheticBanner } from "@/components/ui/SyntheticBanner";
 import { AssociationScore } from "@/components/ui/AssociationScore";
 import { findNavItemByKey } from "@/config/nav";
 import { useUiStore } from "@/store/ui";
-import { useHarmonizedSeries, useModules } from "@/lib/queries";
+import { useHarmonizedSeries, useMatchSeries, useModules } from "@/lib/queries";
 import {
   useAlgorithmRuns,
   useEvents,
@@ -175,6 +175,7 @@ export function HarmonizationPage() {
   const runs = useAlgorithmRuns();
   const runHarmonization = useRunHarmonization();
   const harmonized = useHarmonizedSeries(dateRange.start, dateRange.end);
+  const matchSeries = useMatchSeries(dateRange.start, dateRange.end);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -346,13 +347,16 @@ export function HarmonizationPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => void harmonized.refetch()}
+                  onClick={() => {
+                    void matchSeries.refetch();
+                    void harmonized.refetch();
+                  }}
                   aria-label="Refresh association series"
                   title="Refresh association series"
                   className="btn-glass inline-flex items-center gap-1.5 px-2.5 py-[4px] text-3xs"
                 >
                   <RotateCw
-                    className={`size-3 ${harmonized.isFetching ? "animate-spin" : ""}`}
+                    className={`size-3 ${matchSeries.isFetching ? "animate-spin" : ""}`}
                     aria-hidden
                   />
                   <span className="hidden sm:inline">Refresh</span>
@@ -373,8 +377,8 @@ export function HarmonizationPage() {
             >
               <div className="border-b border-line/[0.07] px-[22px] pb-[12px] pt-[14px]">
                 <CrossSensorLineChart
-                  series={harmonized.data}
-                  loading={harmonized.isLoading}
+                  series={matchSeries.data}
+                  loading={matchSeries.isLoading}
                 />
               </div>
               <div className="overflow-x-auto">

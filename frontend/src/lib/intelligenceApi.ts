@@ -145,10 +145,45 @@ export interface HarmonizedSeries {
   notes: string[];
 }
 
+export interface MatchSeriesDay {
+  date: string;
+  probable: number;
+  possible: number;
+  rejected: number;
+  /** Probable + possible pairs on this day. */
+  matches: number;
+}
+
+export interface MatchSeries {
+  start_date: string;
+  end_date: string;
+  synthetic: boolean;
+  definition: string;
+  days: MatchSeriesDay[];
+  totals: {
+    probable: number;
+    possible: number;
+    rejected: number;
+    matches: number;
+  };
+  coverage: {
+    days: number;
+    days_with_associations: number;
+  };
+}
+
 export function fetchHarmonizedSeries(start: string, end: string, signal?: AbortSignal) {
   const params = new URLSearchParams({ start_date: start, end_date: end });
   return apiFetch<HarmonizedSeries>(
     `/api/v1/harmonization/series?${params.toString()}`,
+    { signal, cache: "no-store" },
+  );
+}
+
+export function fetchMatchSeries(start: string, end: string, signal?: AbortSignal) {
+  const params = new URLSearchParams({ start_date: start, end_date: end });
+  return apiFetch<MatchSeries>(
+    `/api/v1/harmonization/matches/series?${params.toString()}`,
     { signal, cache: "no-store" },
   );
 }

@@ -246,7 +246,11 @@ async def run_ingestion(
     events_result = None
     if request.run_harmonization and result.records_inserted:
         harmonization_result = await run_in_threadpool(
-            harmonization_service.run_harmonization, is_synthetic=False
+            harmonization_service.run_harmonization_range,
+            start=request.start_date,
+            end=request.end_date,
+            is_synthetic=False,
+            force=True,
         )
         if request.run_events:
             events_result = await run_in_threadpool(
@@ -410,7 +414,11 @@ async def run_all_sources(
     events_result = None
     if inserted_total and request.run_harmonization:
         harmonization_result = await run_in_threadpool(
-            harmonization_service.run_harmonization, is_synthetic=False
+            harmonization_service.run_harmonization_range,
+            start=request.start_date,
+            end=request.end_date,
+            is_synthetic=False,
+            force=True,
         )
         if request.run_events:
             events_result = await run_in_threadpool(

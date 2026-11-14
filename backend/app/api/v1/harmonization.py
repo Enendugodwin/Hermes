@@ -206,6 +206,83 @@ def coverage(
     return harmonization_service.coverage_summary(session, is_synthetic=synthetic)
 
 
+@router.get(
+    "/matches/series",
+    summary="Daily cross-sensor association outcomes",
+)
+def match_outcomes_series(
+    start_date: date = Query(..., description="First day (UTC)"),
+    end_date: date = Query(..., description="Last day (UTC)"),
+    synthetic: bool = Query(False, description="Use labelled fixture observations"),
+    session: Session = Depends(get_session),
+) -> dict[str, object]:
+    """Daily probable, possible and rejected pair counts for the chart.
+
+    This intentionally does not recompute raw MODIS/VIIRS totals or the
+    harmonised series. It reads only the indexed match table, so it stays fast
+    while ingestion is running and can be polled by the console.
+    """
+    validate_span(start_date, end_date)
+    a = FireObservation
+    rows = session.execute(
+        select(
+            ObservationMatch.match_day,
+            ObservationMatch.match_status,
+            func.count(),
+        )
+        .join(a, ObservationMatch.observation_a_id == a.id)
+        .where(
+            a.is_synthetic == synthetic,
+            ObservationMatch.match_day >= start_date,
+            ObservationMatch.match_day <= end_date,
+        )
+        .group_by(ObservationMatch.match_day, ObservationMatch.match_status)
+    ).all()
+
+    by_day: dict[date, dict[str, int]] = {}
+    for day, status, count in rows:
+        by_day.setdefault(day, {})[str(status)] = int(count)
+
+    days: list[dict[str, object]] = []
+    totals = {"probable": 0, "possible": 0, "rejected": 0, "matches": 0}
+    for day in sorted(by_day):
+        by_status = by_day[day]
+        probable = by_status.get("probable", 0)
+        possible = by_status.get("possible", 0)
+        rejected = by_status.get("rejected", 0)
+        matches = probable + possible
+        days.append(
+            {
+                "date": day.isoformat(),
+                "probable": probable,
+                "possible": possible,
+                "rejected": rejected,
+                "matches": matches,
+            }
+        )
+        totals["probable"] += probable
+        totals["possible"] += possible
+        totals["rejected"] += rejected
+        totals["matches"] += matches
+
+    return {
+        "start_date": start_date,
+        "end_date": end_date,
+        "synthetic": synthetic,
+        "definition": (
+            "Daily counts of scored MODIS/VIIRS pairs. Matches = probable + possible; "
+            "rejected pairs are candidates that failed the association threshold and are "
+            "never subtracted from the harmonised total."
+        ),
+        "days": days,
+        "totals": totals,
+        "coverage": {
+            "days": len(days),
+            "days_with_associations": sum(1 for day in days if day["matches"]),
+        },
+    }
+
+
 @router.get("/matches", response_model=MatchPage, summary="Probable cross-sensor matches")
 def list_matches(
     status: str | None = Query(None, pattern="^(probable|possible|rejected)$"),
@@ -459,16 +536,24 @@ async def run_matching(
     results = []
     for scope in scopes:
         try:
-            results.append(
-                await run_in_threadpool(
+            if request.start_date and request.end_date:
+                result = await run_in_threadpool(
+                    harmonization_service.run_harmonization_range,
+                    start=request.start_date,
+                    end=request.end_date,
+                    params=params,
+                    is_synthetic=scope,
+                    bbox=bbox,
+                    force=True,
+                )
+            else:
+                result = await run_in_threadpool(
                     harmonization_service.run_harmonization,
                     params=params,
                     is_synthetic=scope,
                     bbox=bbox,
-                    start_date=request.start_date,
-                    end_date=request.end_date,
                 )
-            )
+            results.append(result)
         except harmonization_service.HarmonizationBusy as exc:
             raise AppError("conflict", str(exc)) from exc
 

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api";
-import { fetchHarmonizedSeries } from "@/lib/intelligenceApi";
+import { fetchHarmonizedSeries, fetchMatchSeries } from "@/lib/intelligenceApi";
 import type {
   AlgorithmRunOut,
   IngestAllResponse,
@@ -92,6 +92,23 @@ export function useHarmonizedSeries(start: string, end: string) {
     // those runs can be triggered from another tab, the CLI or a scheduler.
     staleTime: 15_000,
     refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    retry: 1,
+  });
+}
+
+/**
+ * Lightweight daily association outcomes for charts. It reads only the match
+ * table, so it stays fast while a large ingestion run is in progress.
+ */
+export function useMatchSeries(start: string, end: string) {
+  return useQuery({
+    queryKey: ["match-series", start, end],
+    queryFn: ({ signal }) => fetchMatchSeries(start, end, signal),
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     retry: 1,
   });
@@ -162,6 +179,7 @@ export function useRunHarmonization() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["harmonization"] });
       void queryClient.invalidateQueries({ queryKey: ["harmonized-series"] });
+      void queryClient.invalidateQueries({ queryKey: ["match-series"] });
       void queryClient.invalidateQueries({ queryKey: queryKeys.systemStatus });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       void queryClient.invalidateQueries({ queryKey: ["analytics"] });
@@ -279,7 +297,11 @@ export function useRunAllIngestion() {
             events?: Record<string, unknown>[];
           }>("/api/v1/harmonization/run", {
             method: "POST",
-            body: JSON.stringify({ run_events }),
+            body: JSON.stringify({
+              run_events,
+              start_date: payload.start_date,
+              end_date: payload.end_date,
+            }),
           });
           harmonization = { scopes: outcome.scopes ?? [] };
           events = outcome.events?.length ? { events: outcome.events.length } : null;

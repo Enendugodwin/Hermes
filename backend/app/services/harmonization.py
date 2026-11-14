@@ -365,12 +365,15 @@ def scope_key(bbox: BBox | None) -> str:
     return f"bbox:{bbox.west:g},{bbox.south:g},{bbox.east:g},{bbox.north:g}"
 
 
-def _delete_matches_for_day(session: Session, day: date, bbox: BBox | None) -> None:
+def _delete_matches_for_day(
+    session: Session, day: date, bbox: BBox | None, is_synthetic: bool
+) -> None:
     """Remove prior associations whose MODIS side falls on ``day`` in scope."""
     a = aliased(FireObservation)
     scope_ids = select(a.id).where(
         a.acquired_at >= _window_start(day),
         a.acquired_at < _window_end(day),
+        a.is_synthetic == is_synthetic,
     )
     if bbox is not None:
         scope_ids = scope_ids.where(
@@ -521,7 +524,7 @@ def run_harmonization_range(
                     continue
 
                 pairs = compute_matches(observations, params)
-                _delete_matches_for_day(session, cursor, bbox)
+                _delete_matches_for_day(session, cursor, bbox, is_synthetic)
                 counts = _insert_matches(session, pairs)
 
                 coverage = existing or HarmonizationCoverage(

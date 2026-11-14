@@ -1070,6 +1070,26 @@ export function installFetchMock(options: MockOptions = {}) {
       });
     }
     if (url.includes("/api/v1/harmonization/summary")) return json(summary);
+    if (url.includes("/api/v1/harmonization/matches/series")) {
+      const parsed = new URL(url, "http://localhost").searchParams;
+      return json({
+        start_date: parsed.get("start_date") ?? "2026-10-29",
+        end_date: parsed.get("end_date") ?? "2026-10-31",
+        synthetic: false,
+        definition: "Daily counts of scored MODIS/VIIRS pairs.",
+        days: [
+          {
+            date: "2026-10-30",
+            probable: 1,
+            possible: 2,
+            rejected: 2,
+            matches: 3,
+          },
+        ],
+        totals: { probable: 1, possible: 2, rejected: 2, matches: 3 },
+        coverage: { days: 1, days_with_associations: 1 },
+      });
+    }
     if (url.includes("/api/v1/harmonization/matches")) return json(matches);
     if (url.includes("/api/v1/harmonization/events")) return json(events);
     if (url.includes("/api/v1/harmonization/jobs")) return json([]);
