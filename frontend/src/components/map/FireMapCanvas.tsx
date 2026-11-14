@@ -34,6 +34,10 @@ export function applyMapTheme(
   map.setPaintProperty("background", "background-color", theme.background);
 
   if (map.getLayer(BASEMAP_LAYER)) {
+    const source = map.getSource(BASEMAP_SOURCE) as
+      | { setTiles?: (tiles: string[]) => void }
+      | undefined;
+    source?.setTiles?.(theme.tiles);
     const paint = buildBasemapLayer(theme).paint as Record<string, unknown>;
     for (const [key, value] of Object.entries(paint)) {
       map.setPaintProperty(BASEMAP_LAYER, key, value);
@@ -85,6 +89,7 @@ export function applyMapTheme(
 
 export interface FireMapHandle {
   flyTo(longitude: number, latitude: number, zoom?: number): void;
+  setPitch(pitch: number): void;
 }
 
 interface FireMapCanvasProps {
@@ -132,6 +137,9 @@ export function FireMapCanvas({
       flyTo(longitude: number, latitude: number, zoom = 7) {
         mapRef.current?.flyTo({ center: [longitude, latitude], zoom, duration: 1400 });
       },
+      setPitch(pitch: number) {
+        mapRef.current?.easeTo({ pitch, duration: 700 });
+      },
     });
     // The handle is stable: it always delegates to the current map instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -142,7 +150,7 @@ export function FireMapCanvas({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: buildMapStyle(),
+      style: buildMapStyle(MAP_THEMES[latest.current.theme]),
       center: [8.7, 9.1],
       zoom: 2.4,
       minZoom: 1,
@@ -172,7 +180,7 @@ export function FireMapCanvas({
     map.on("load", () => {
       loadedRef.current = true;
 
-      map.addSource(BASEMAP_SOURCE, buildBasemapSource());
+      map.addSource(BASEMAP_SOURCE, buildBasemapSource(MAP_THEMES[latest.current.theme]));
       map.addLayer(buildBasemapLayer(MAP_THEMES[latest.current.theme]));
 
       map.addSource("fires", {
@@ -201,16 +209,16 @@ export function FireMapCanvas({
           ],
           "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 1, 1.2, 8, 2.4],
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 12, 6, 26, 9, 40],
-          "heatmap-opacity": 0.55,
+          "heatmap-opacity": 0.62,
           "heatmap-color": [
             "interpolate",
             ["linear"],
             ["heatmap-density"],
             0, "rgba(0,0,0,0)",
-            0.2, "rgba(250,204,21,0.35)",
-            0.5, "rgba(251,146,60,0.7)",
-            0.8, "rgba(239,68,68,0.9)",
-            1, "rgba(255,255,255,0.95)",
+            0.2, "rgba(255,180,92,0.32)",
+            0.5, "rgba(242,138,67,0.66)",
+            0.8, "rgba(230,92,80,0.88)",
+            1, "rgba(255,236,218,0.95)",
           ],
         },
       });
@@ -241,9 +249,9 @@ export function FireMapCanvas({
           "circle-stroke-color": [
             "match",
             ["get", "sensor"],
-            "MODIS", "#72A5F9",
-            "VIIRS", "#60D58B",
-            "rgba(255,255,255,0.4)",
+            "MODIS", MAP_THEMES[theme].sensor.MODIS,
+            "VIIRS", MAP_THEMES[theme].sensor.VIIRS,
+            "rgba(232,237,242,0.4)",
           ],
         },
       });

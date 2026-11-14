@@ -2,9 +2,8 @@ import clsx from "clsx";
 import type { ReactNode } from "react";
 
 /**
- * Card surface. The gradient border shell is the hero edge treatment: a 1px
- * wrapper carrying a light-to-transparent gradient, with the real surface inset
- * inside a slightly smaller radius.
+ * Card surface. Floating information panels use the same glass material as the
+ * map overlays, with hairline separators instead of heavy borders.
  */
 export function Panel({
   title,
@@ -24,32 +23,30 @@ export function Panel({
   as?: "section" | "div" | "article";
 }) {
   return (
-    <Tag className={clsx("shell shadow-glass", className)}>
-      <div className="shell-inner">
-        {title || actions ? (
-          <header className="flex items-start justify-between gap-[10px] border-b border-line/[0.07] px-[22px] pb-[14px] pt-[18px]">
-            <div className="min-w-0">
-              {title ? (
-                <h2 className="truncate text-[13px] font-medium tracking-[0.01em] text-ink">
-                  {title}
-                </h2>
-              ) : null}
-              {subtitle ? (
-                <p className="mt-[3px] text-2xs font-light leading-relaxed text-muted">{subtitle}</p>
-              ) : null}
-            </div>
-            {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
-          </header>
-        ) : null}
-        <div className={clsx("px-[22px] py-[18px]", bodyClassName)}>{children}</div>
-      </div>
+    <Tag className={clsx("glass-panel", className)}>
+      {title || actions ? (
+        <header className="flex items-start justify-between gap-[10px] border-b border-line/[0.07] px-[18px] pb-[13px] pt-[16px]">
+          <div className="min-w-0">
+            {title ? (
+              <h2 className="truncate text-[13px] font-medium tracking-[0.01em] text-ink">
+                {title}
+              </h2>
+            ) : null}
+            {subtitle ? (
+              <p className="mt-[3px] text-2xs font-light leading-relaxed text-muted">{subtitle}</p>
+            ) : null}
+          </div>
+          {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+        </header>
+      ) : null}
+      <div className={clsx("px-[18px] py-[16px]", bodyClassName)}>{children}</div>
     </Tag>
   );
 }
 
 /**
- * A measurement. The value is set in the display serif so numbers read as
- * editorial figures rather than dashboard furniture.
+ * A measurement. Values are monospaced and high-contrast so they read as
+ * instrument numbers rather than dashboard furniture.
  */
 export function StatTile({
   label,
@@ -60,26 +57,23 @@ export function StatTile({
   label: string;
   value: ReactNode;
   hint?: ReactNode;
-  tone?: "neutral" | "warn" | "ok" | "info";
+  tone?: "neutral" | "warn" | "ok" | "info" | "fire";
 }) {
   const valueTone =
     tone === "warn"
       ? "text-warn"
       : tone === "ok"
-        ? "text-accent"
+        ? "text-ok"
         : tone === "info"
           ? "text-azure"
-          : "text-ink";
+          : tone === "fire"
+            ? "text-fire-medium"
+            : "text-ink";
 
   return (
-    <div className="relative rounded-card border border-line/[0.07] bg-line/[0.025] px-[18px] py-[16px] transition-colors duration-150 hover:border-line/[0.12]">
+    <div className="relative rounded-card border border-line/[0.07] bg-line/[0.02] px-[16px] py-[14px] transition-colors duration-150 hover:border-line/[0.14]">
       <div className="label">{label}</div>
-      <div
-        className={clsx(
-          "mt-[6px] font-display text-[30px] leading-none tracking-[-0.02em]",
-          valueTone,
-        )}
-      >
+      <div className={clsx("mt-[7px] font-mono text-[27px] leading-none tracking-[-0.03em]", valueTone)}>
         {value}
       </div>
       {hint ? <div className="mt-[8px] text-2xs font-light leading-snug text-faint">{hint}</div> : null}

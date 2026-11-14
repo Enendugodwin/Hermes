@@ -1,17 +1,27 @@
-import { Contrast, ExternalLink, Menu, Moon, Search, Settings2, ShieldCheck, UserRound } from "lucide-react";
+import {
+  Contrast,
+  ExternalLink,
+  Menu,
+  Moon,
+  Search,
+  Settings2,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
+import { Badge } from "@/components/ui/Badge";
+import { Popover } from "@/components/ui/Popover";
+import { StatusDot } from "@/components/ui/StatusDot";
 import { NAV_ITEMS } from "@/config/nav";
 import { useSystemStatus } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
-import { Badge } from "@/components/ui/Badge";
-import { Popover } from "@/components/ui/Popover";
 import { DateRangeControl } from "./DateRangeControl";
 import { FreshnessIndicator } from "./FreshnessIndicator";
 import { NotificationsMenu } from "./NotificationsMenu";
 
 const iconButton =
-  "inline-flex size-8 items-center justify-center rounded-full border border-line/10 bg-line/[0.03] text-muted transition-colors duration-150 hover:border-line/20 hover:text-ink";
+  "inline-flex size-8 items-center justify-center rounded-control border border-line/10 bg-line/[0.02] text-muted transition-colors duration-150 hover:border-line/20 hover:text-ink";
 
 function ProfileMenu() {
   const { data } = useSystemStatus();
@@ -37,7 +47,7 @@ function ProfileMenu() {
       {(close) => (
         <div className="p-[18px]">
           <div className="flex items-center gap-[10px]">
-            <span className="flex size-9 items-center justify-center rounded-full border border-line/10 font-mono text-3xs text-muted">
+            <span className="flex size-9 items-center justify-center rounded-control border border-accent/25 bg-accent/[0.07] font-mono text-3xs text-accent">
               OP
             </span>
             <div className="min-w-0">
@@ -54,8 +64,8 @@ function ProfileMenu() {
           </div>
 
           <p className="mt-2 text-2xs font-light leading-relaxed text-faint">
-            Authentication and role-based access control arrive with the security phase. Until then
-            this console is open and must not be exposed to an untrusted network.
+            Authentication and role-based access control are enforced server-side. Do not expose
+            this console to an untrusted network.
           </p>
 
           <div className="mt-[14px] space-y-[2px] border-t border-line/[0.07] pt-[10px]">
@@ -110,6 +120,25 @@ function ThemeToggle() {
   );
 }
 
+function SystemPill() {
+  const { data, isError } = useSystemStatus();
+  const online = Boolean(data?.database.connected) && !isError;
+
+  return (
+    <span
+      className={`hidden h-8 items-center gap-[7px] rounded-control border px-[10px] font-mono text-3xs uppercase tracking-[0.14em] xl:inline-flex ${
+        online
+          ? "border-success/25 bg-success/[0.06] text-success"
+          : "border-danger/30 bg-danger/[0.06] text-danger"
+      }`}
+      title={online ? "API and database reachable" : "API or database unavailable"}
+    >
+      <StatusDot tone={online ? "ok" : "danger"} pulse={online} />
+      {online ? "System online" : "System offline"}
+    </span>
+  );
+}
+
 export function TopBar() {
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen);
   const setCommandOpen = useUiStore((state) => state.setCommandOpen);
@@ -119,7 +148,7 @@ export function TopBar() {
   );
 
   return (
-    <header className="glass sticky top-0 z-30 flex h-14 items-center gap-2 border-x-0 border-t-0 px-3 sm:px-[22px]">
+    <header className="glass sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-x-0 border-t-0 bg-canvas/60 px-3 sm:px-[18px]">
       <button
         type="button"
         onClick={() => setSidebarOpen(true)}
@@ -130,8 +159,8 @@ export function TopBar() {
       </button>
 
       <div className="hidden min-w-0 items-center gap-2 sm:flex">
-        <span className="label shrink-0">Firewatch X</span>
-        <span className="text-line/25">/</span>
+        <span className="font-mono text-3xs uppercase tracking-[0.18em] text-accent">HERMES</span>
+        <span className="text-line/20">/</span>
         <span className="truncate text-xs font-light text-ink">{current?.label ?? "Not found"}</span>
       </div>
 
@@ -139,18 +168,19 @@ export function TopBar() {
         <button
           type="button"
           onClick={() => setCommandOpen(true)}
-          aria-label="Search modules"
-          className="group flex h-8 w-8 shrink-0 items-center justify-center gap-2 rounded-full border border-line/10 bg-line/[0.03] px-0 text-left text-2xs font-light text-faint transition-colors duration-150 hover:border-line/20 hover:text-muted sm:w-full sm:max-w-sm sm:justify-start sm:px-[12px]"
+          aria-label="Search Hermes"
+          className="group flex h-8 w-8 shrink-0 items-center justify-center gap-2 rounded-control border border-line/10 bg-line/[0.02] px-0 text-left text-2xs font-light text-faint transition-colors duration-150 hover:border-line/20 hover:text-muted sm:w-full sm:max-w-sm sm:justify-start sm:px-[11px]"
         >
           <Search className="size-3.5 shrink-0" aria-hidden />
-          <span className="hidden flex-1 truncate sm:block">Search modules</span>
-          <kbd className="hidden items-center rounded-full border border-line/10 px-[6px] py-[1px] font-mono text-3xs text-faint sm:flex">
+          <span className="hidden flex-1 truncate sm:block">Search Hermes</span>
+          <kbd className="hidden items-center rounded border border-line/10 px-[6px] py-[1px] font-mono text-3xs text-faint sm:flex">
             Ctrl K
           </kbd>
         </button>
       </div>
 
       <div className="flex shrink-0 items-center gap-[6px]">
+        <SystemPill />
         <div className="hidden md:block">
           <DateRangeControl />
         </div>

@@ -36,7 +36,7 @@ export function FreshnessIndicator() {
 
   const toneClass =
     freshness.tone === "ok"
-      ? "border-accent/30 text-accent"
+      ? "border-ok/30 text-ok"
       : freshness.tone === "warn"
         ? "border-warn/30 text-warn"
         : freshness.tone === "danger"

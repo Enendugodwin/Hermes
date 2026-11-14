@@ -1,11 +1,19 @@
-# FIREWATCH X
+# HERMES
 
-**Global fire intelligence, from satellite detections to defensible analysis.**
+**Earth observation intelligence, from satellite detections to defensible analysis.**
 
-FIREWATCH X is a geospatial intelligence platform for NASA MODIS and VIIRS active-fire
-observations. It retrieves real satellite thermal detections, retains the raw payloads on a 90-day
-retention policy, normalises them per sensor family, associates observations across sensors, groups estimated events, and
-exposes all of it through a dark analytical console.
+HERMES is the mission-control interface for the FIREWATCH X engine: a geospatial
+intelligence platform for NASA MODIS and VIIRS active-fire observations. It retrieves real
+satellite thermal detections, retains the raw payloads on a 90-day retention policy, normalises
+them per sensor family, associates observations across sensors, groups estimated events, and
+exposes all of it through a dark, map-first analytical console.
+
+> [!NOTE]
+> **GUI status: Hermes design system, milestone 1.** The backend, API contract and data
+> pipeline are unchanged. The Overview is now a full-bleed map-first workspace with floating
+> glass panels, NASA GIBS satellite imagery, a temporal explorer, 2D/3D camera control and a
+> mobile panel sheet. The remaining workspaces still use the previous shell and are being
+> migrated onto the same tokens and components.
 
 > [!IMPORTANT]
 > **Status: Phase 9 of 9 ? production ready (2026-11-04).** Ingestion, harmonization, the map,
@@ -39,6 +47,13 @@ exposes all of it through a dark analytical console.
 > **Taking over?** Start with **[docs/handover.md](docs/handover.md)** ? credentials handling, local setup, runbooks, backup/restore and the first-day checklist.
 
 ## Screenshots
+
+### Hermes overview (demo fixture)
+
+![Hermes Overview: full-bleed NASA GIBS imagery, floating mission panels, sensor network, temporal explorer and honest synthetic-data labelling](docs/screenshots/hermes-overview.png)
+
+> The captures below show the pre-Hermes console. New Hermes captures will replace them as the
+> remaining workspaces are migrated.
 
 These are live captures of the console on the workstation (PostgreSQL store, 2026-11-04).
 
@@ -238,12 +253,14 @@ surface (envelopes, filters, pagination, 501s).
 
 ## Design language
 
-**Orbital Intelligence** — a near-black field (`#131315`) with deep-navy glass surfaces
-(`#0B101D`), hairline white borders inside a gradient edge shell, and one restrained green accent
-(`#60D58B`). Display type is Newsreader; interface copy is light-weight Inter; measurements,
-coordinates and source codes are JetBrains Mono. Fire severity keeps its own semantic scale
-(amber/orange/red) so colour never confuses chrome with hazard. See
-[docs/design.md](docs/design.md).
+**Hermes Mission Control** — a deep-space field (`#080C11`) with graphite glass surfaces
+(`#111820`, raised `#1B2631`), hairline separators, and one mission-orange accent (`#F28A43`)
+for action and fire intelligence. Signal green (`#72C98B`) is reserved for healthy systems;
+alert red (`#E65C50`) is reserved for critical warnings. Interface type is Inter; measurements,
+coordinates and source codes are IBM Plex Mono. The map is the primary workspace: satellite
+imagery, floating translucent panels, a bottom temporal explorer, and controls that collapse so
+the map can reclaim the screen. Fire severity keeps its own amber-orange-red data scale so colour
+never confuses chrome with hazard. See [docs/design.md](docs/design.md).
 
 ## Roadmap
 

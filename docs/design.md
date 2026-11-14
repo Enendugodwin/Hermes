@@ -1,89 +1,100 @@
 # Design system
 
-FIREWATCH X uses the **Orbital Intelligence** visual language: a near-black field, deep-navy glass
-surfaces, hairline white borders with a gradient edge shell, editorial serif display type and one
-restrained green accent. The intent is institutional satellite intelligence — calm, technical,
-meditative — rather than a generic "AI dashboard".
+HERMES uses the **Mission Control** visual language for Earth observation: a deep-space field,
+graphite glass surfaces, hairline separators, one mission-orange accent, signal green for healthy
+systems and a map that owns the workspace. The intent is a professional satellite operations
+console — cinematic but scientifically calm — not a generic analytics dashboard.
 
-Source of the language: `Arion-One-Orbital-Intelligence-DESIGN.md`.
+The reference direction is a dark geospatial mission-control UI; the implementation is adapted to
+Hermes, not copied from it.
 
 ## Colour
 
 | Token | Value | Use |
 | --- | --- | --- |
-| Background | `#131315` | Page canvas |
-| Surface | `#0B101D` | Glass panels, sidebar, header, popovers |
-| Text primary (ink) | `#FFFFFF` | Headings, values |
-| Text secondary (muted) | `#8C9099` | Body copy, labels |
-| Faint | `#676C79` | Metadata, hints |
-| Border | `#FFFFFF` at 6–14% | Hairlines, shells, controls |
-| Accent | `#60D58B` | Interactive emphasis, healthy state, active nav |
-| Secondary | `#72A5F9` | Informational state |
-| Tertiary | `#62D5DD` | Rare contrast moments |
+| Background | `#080C11` | Page canvas, map fallback, status bar |
+| Surface | `#111820` | Glass panels, sidebar, header, popovers |
+| Elevated surface | `#1B2631` | Floating controls, hovered rows |
+| Text primary (ink) | `#E8EDF2` | Headings, values |
+| Text secondary (muted) | `#9AA8B5` | Body copy, labels |
+| Faint | `#70808F` | Metadata, hints, axis text |
+| Border | `#E8EDF2` at 6–12% | Hairlines, controls, panel edges |
+| Mission orange | `#F28A43` | Primary action, active nav, map controls |
+| Fire amber | `#FFB45C` | Low fire activity, chart line |
+| Alert red | `#E65C50` | High fire activity, critical alerts |
+| Signal green | `#72C98B` | Healthy system status, verified data only |
+| Azure | `#6FA8FF` | MODIS sensor identity, informational state |
 
-Fire-activity colours (`#FACC15`, `#FB923C`, `#EF4444`) are **semantic data colours** reserved for
-severity scales and the disclaimer — never used for chrome, so amber always means "fire", not
-"button".
+Fire colours (`#FFB45C`, `#F28A43`, `#E65C50`) are **semantic data colours** reserved for severity
+scales and the disclaimer. Orange is also the interaction accent, but green is never decorative:
+it means a system is healthy.
 
 ## Typography
 
 | Role | Font | Size / weight |
 | --- | --- | --- |
-| Display | Newsreader (400) | 34–40px, tracking −0.025em |
+| Headings | Inter (500) | 28–34px, tracking −0.02em |
 | Body | Inter (300) | 13–14px / 1.65 |
-| Labels | Inter (500) | 10–11px uppercase, tracking 0.14–0.16em |
-| Measurements / IDs | JetBrains Mono | 11–13px, tabular |
+| Labels | Inter (500) | 9–11px uppercase, tracking 0.16–0.22em |
+| Measurements / IDs | IBM Plex Mono | 11–20px, tabular |
 
-Display serif carries page titles and stat values; Inter carries interface copy; mono is reserved
-for coordinates, timestamps, source codes and endpoint paths so measurements stay unambiguous.
+Measurements, coordinates, timestamps, source codes and endpoint paths are always monospaced so
+instrument readings stay unambiguous.
 
 ## Surfaces and depth
 
-- Every card is glass: `#0B101D` at 62–92% with 14px backdrop blur.
-- Cards use a **gradient border shell**: a 1px wrapper carrying
-  `linear-gradient(to bottom right, rgba(255,255,255,0.14), rgba(255,255,255,0.03), transparent)` with
-  the content surface inset at a 1px smaller radius (12px → 11px).
-- Shadows are glow-first, never heavy: `0 0 24px rgb(255 255 255 / 0.06)` inside panels,
-  `0 0 18px rgb(96 213 139 / 0.18)` for halos, and a single lift shadow for popovers.
-- Radii stay in the family 7 / 8 / 11 / 12 / 9999px (tags, controls, cards, shells, pills).
+- Floating information panels use `.glass-panel`: a vertical graphite gradient at 84–90% opacity,
+  an 18px backdrop blur with 130% saturation, a 1px hairline border and one deep lift shadow.
+- Map overlays sit above a vignette so white text remains legible over bright NASA imagery.
+- Radii stay in the family 3 / 4 / 6 / 8px. Cards are not over-rounded.
+- Shadows are used only on floating surfaces; flat content uses separators, not shadows.
 
 ## Layout rhythm
 
-Base unit 6px. Steps used: 6, 8, 10, 12, 14, 18, 22, 28. Section padding 28px (56px at large
-breakpoints), card padding 18–22px, control height 32px, header 56px, sidebar 264px (72px rail).
+Base unit 6px. Steps used: 6, 8, 10, 12, 14, 18, 22, 28. Card padding 14–18px, control height 32px,
+header 56px, sidebar 248px (68px rail).
 
-## Background field
+The Overview is a map-first workspace:
 
-A perspective grid rendered behind the console: green hairlines on black, converging on a horizon
-with a slow breathing pulse and a subtle pointer drift, faded into the chrome at the page edges.
+- full-bleed map between the header and status bar;
+- mission strip top-left and map toolbar top-right;
+- collapsible glass panel left (global activity) and right (sensor network / detection detail);
+- temporal explorer bottom-centre;
+- mobile summary strip with a bottom-sheet entry to the panels.
 
-Implemented as Canvas 2D (`OrbitalField.tsx`) rather than WebGL: the visual language is identical,
-the bundle stays small in a data-critical app, the device pixel ratio is clamped to 2, and it falls
-back to a static frame under `prefers-reduced-motion`. The CSS radial gradient underneath is the DOM
-fallback if a 2D context is unavailable.
+## Map language
+
+- Default basemap is NASA GIBS Blue Marble (`BlueMarble_NextGeneration`), attributed in the UI.
+- Fire layers: gridded density cells below zoom 6, individual detections at closer zooms.
+- Cell colour is density, not FRP, so one intense detection cannot recolour a whole cell.
+- MODIS and VIIRS have distinct sensor outline colours; severity uses the fire ramp.
+- The harmonised view removes VIIRS detections already associated with MODIS and marks duplicates.
+- Controls: 2D/3D camera, layers, sensors, heatmap, imagery, harmonised view, full screen.
 
 ## Motion
 
-Minimal: 150ms transitions on colour and border, 240ms `cubic-bezier(0.2, 1, 0.4, 1)` for panel
-entry, 1000ms for the delivery meter, 4s breathing pulse for live indicators. All motion is disabled
-under `prefers-reduced-motion`.
+Minimal: 150ms colour and border transitions, 240ms panel entry, 4s breathing pulse for live
+indicators, 700ms camera pitch. All motion is disabled under `prefers-reduced-motion`.
 
 ## Components
 
 | Component | Recipe |
 | --- | --- |
-| Primary action | Off-white `#FAFAFA` pill, `#05070F` label, 8px vertical padding |
-| Secondary action | Glass pill: hairline border, 4% white fill, muted label |
-| Panel | Gradient shell → 11px inset surface → header 22px, body 22px |
-| Stat tile | Label, serif figure at 30px, 12px hint, hairline border |
-| Badge | Pill, hairline border in the semantic tone, 10px uppercase label |
-| Nav item | 8px radius, quiet by default, 6% white fill + green icon when active |
-| Popover | Glass card, 12px radius, lift shadow, 14px blur |
+| Primary action | Mission-orange fill, `#0A0F14` label, 4px radius |
+| Secondary action | Glass control: hairline border, 4% white fill, muted label |
+| Glass panel | Graphite gradient, 18px blur, hairline border, collapse chevron |
+| Metric | 9px label, 26–27px mono figure, faint hint |
+| Badge | 3px radius, semantic hairline and label, 10px uppercase |
+| Nav item | 4px radius, quiet by default, orange icon + 2px left rule when active |
+| Popover | Glass card, 6px radius, lift shadow |
+| Sensor row | Colour dot, name, count, share bar, reporting state |
+| Temporal explorer | SVG area line, active days, peak day, period presets |
 
 ## Constraints
 
-- One accent green; blue and cyan are informational only; amber/orange/red mean fire.
-- No fills behind text except 4–6% white haze.
-- No shadows on flat content; glow only on floating surfaces.
-- Borders are hairlines at 6–14% white — never a solid light stroke.
+- One interaction accent (orange); green is reserved for healthy systems.
+- No invented data. Empty, loading and error states are explicit; synthetic rows are labelled.
+- Every measurement has a unit, a source and a date where the API provides one.
+- Borders are hairlines at 6–12% white — never a solid light stroke.
+- Panels collapse; the map may reclaim the screen.
 - Never introduce a new radius, font size or spacing value outside the families above.

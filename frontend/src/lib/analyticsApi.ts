@@ -90,13 +90,19 @@ export interface AnomaliesResponse {
   notes: string[];
 }
 
-export function fetchAnalytics(startDate: string, endDate: string, signal?: AbortSignal) {
+export function fetchAnalytics(
+  startDate: string,
+  endDate: string,
+  signal?: AbortSignal,
+  /** `null` means all provenance; `false` excludes labelled fixtures. */
+  synthetic: boolean | null = false,
+) {
   const params = new URLSearchParams({
     start_date: startDate,
     end_date: endDate,
-    synthetic: "false",
     top: "10",
   });
+  if (synthetic !== null) params.set("synthetic", String(synthetic));
   return apiFetch<AnalyticsResponse>(`/api/v1/analytics/summary?${params.toString()}`, { signal });
 }
 

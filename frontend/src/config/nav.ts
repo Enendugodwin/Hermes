@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Archive,
   CalendarDays,
+  Cloud,
   FileText,
   Globe2,
   LayoutDashboard,
@@ -11,7 +12,6 @@ import {
   Radar,
   Search,
   Settings2,
-  Cloud,
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
@@ -34,9 +34,14 @@ export interface NavSection {
   items: NavItem[];
 }
 
+/**
+ * Hermes workspaces. Keys and routes are unchanged from the platform build so
+ * existing deep links, tests and API contracts keep working; only the mission
+ * language is updated.
+ */
 export const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Monitoring",
+    title: "Observe",
     items: [
       {
         key: "overview",
@@ -44,20 +49,20 @@ export const NAV_SECTIONS: NavSection[] = [
         to: "/",
         icon: LayoutDashboard,
         phase: "Phase 4",
-        group: "Global summary",
+        group: "Global mission picture",
       },
       {
         key: "fire-map",
-        label: "Global Fire Map",
+        label: "Intelligence Map",
         to: "/map",
         icon: MapIcon,
         phase: "Phase 4",
-        group: "MapLibre hotspot map",
+        group: "Geospatial workspace",
       },
     ],
   },
   {
-    title: "History",
+    title: "Analyse",
     items: [
       {
         key: "calendar",
@@ -82,15 +87,15 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       {
         key: "harmonization",
-        label: "Sensor Intelligence",
+        label: "Harmonisation Centre",
         to: "/harmonization",
         icon: Layers,
         phase: "Phase 3",
-        group: "MODIS / VIIRS harmonization",
+        group: "MODIS / VIIRS fusion",
       },
       {
         key: "anomalies",
-        label: "Anomaly Detection",
+        label: "Anomaly Intelligence",
         to: "/anomalies",
         icon: Radar,
         phase: "Phase 6",
@@ -99,7 +104,7 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: "Intelligence",
+    title: "Explore",
     items: [
       {
         key: "query",
@@ -111,7 +116,7 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       {
         key: "regions",
-        label: "Regional Intelligence",
+        label: "Regional Explorer",
         to: "/regions",
         icon: Globe2,
         phase: "Phase 6",
@@ -127,7 +132,7 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       {
         key: "reports",
-        label: "Reports",
+        label: "Reports & Exports",
         to: "/reports",
         icon: FileText,
         phase: "Phase 7",
@@ -135,7 +140,7 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       {
         key: "assistant",
-        label: "AI Assistant",
+        label: "Hermes Intelligence",
         to: "/assistant",
         icon: Sparkles,
         phase: "Phase 7",
@@ -144,21 +149,16 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: "Infrastructure",
+    title: "Platform",
     items: [
       {
         key: "cloud-readiness",
-        label: "Cloud Readiness",
+        label: "Infrastructure",
         to: "/infrastructure",
         icon: Cloud,
         phase: "Phase 9",
         group: "Storage, datasets and sync",
       },
-    ],
-  },
-  {
-    title: "System",
-    items: [
       {
         key: "settings",
         label: "Settings",

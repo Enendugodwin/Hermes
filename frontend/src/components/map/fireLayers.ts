@@ -11,9 +11,9 @@ export const AGGREGATE_ZOOM = 6;
 export const POINT_LIMIT = 2000;
 
 export const FIRE_COLORS = {
-  low: "#FACC15",
-  medium: "#FB923C",
-  high: "#EF4444",
+  low: "#FFB45C",
+  medium: "#F28A43",
+  high: "#E65C50",
 } as const;
 
 /** Any palette with three severity stops (map themes provide their own). */
@@ -24,8 +24,8 @@ export interface FireColors {
 }
 
 export const SENSOR_COLORS = {
-  MODIS: "#72A5F9",
-  VIIRS: "#E879F9",
+  MODIS: "#6FA8FF",
+  VIIRS: "#C58CFF",
 } as const;
 
 export function useAggregate(zoom: number): boolean {
@@ -66,15 +66,15 @@ export function cellRadiusExpression(): unknown[] {
     ["linear"],
     ["get", "count"],
     1,
-    3,
+    4,
     10,
-    4.5,
+    5.5,
     100,
-    6.5,
+    7.5,
     1000,
-    9.5,
+    10.5,
     5000,
-    13,
+    14,
   ];
 }
 
@@ -92,8 +92,8 @@ export function cellStrokeExpression(
 
 export function cellStrokeWidth(harmonized: boolean): unknown {
   return harmonized
-    ? ["case", [">", ["get", "matched_viirs"], 0], 1.8, 0.5]
-    : 0.5;
+    ? ["case", [">", ["get", "matched_viirs"], 0], 2, 0.9]
+    : 0.9;
 }
 
 export function cellColorExpression(colors: FireColors = FIRE_COLORS): unknown[] {

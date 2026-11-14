@@ -6,7 +6,7 @@ import type { Tone } from "./Badge";
 const DOT_CLASSES: Record<Tone, string> = {
   neutral: "bg-line/30",
   info: "bg-azure",
-  ok: "bg-accent",
+  ok: "bg-ok",
   warn: "bg-warn",
   danger: "bg-danger",
   fire: "bg-fire-medium",

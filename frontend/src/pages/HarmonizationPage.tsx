@@ -250,8 +250,8 @@ export function HarmonizationPage() {
       ) : null}
 
       {runHarmonization.isSuccess ? (
-        <div className="mb-[12px] flex items-start gap-2.5 rounded-card border border-accent/20 bg-accent/[0.04] px-[18px] py-[12px]">
-          <CheckCircle2 className="mt-[1px] size-3.5 shrink-0 text-accent" aria-hidden />
+        <div className="mb-[12px] flex items-start gap-2.5 rounded-card border border-ok/20 bg-ok/[0.04] px-[18px] py-[12px]">
+          <CheckCircle2 className="mt-[1px] size-3.5 shrink-0 text-ok" aria-hidden />
           <p className="text-2xs font-light text-muted">
             Recompute complete for{" "}
             <span className="text-ink">{runHarmonization.data?.scopes.length ?? 0}</span>{" "}

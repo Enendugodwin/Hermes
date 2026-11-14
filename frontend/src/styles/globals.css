@@ -3,45 +3,48 @@
 @tailwind utilities;
 
 /*
- * Orbital Intelligence tokens.
- * Background #131315, surface #0B101D, ink #FFFFFF, muted #8C9099,
- * accent #60D58B, secondary #72A5F9, tertiary #62D5DD.
+ * HERMES mission-control tokens.
+ * Deep space #080C11, surface #111820, raised #1B2631, ink #E8EDF2,
+ * muted #9AA8B5, mission orange #F28A43, fire amber #FFB45C,
+ * signal green #72C98B, alert red #E65C50.
  */
 @layer base {
   :root,
   .theme-dark {
-    --fw-bg: 19 19 21;
-    --fw-surface: 11 16 29;
-    --fw-raised: 20 26 43;
-    --fw-line: 255 255 255;
-    --fw-ink: 255 255 255;
-    --fw-muted: 140 144 153;
-    --fw-faint: 103 108 121;
-    --fw-accent: 96 213 139;
-    --fw-azure: 114 165 249;
-    --fw-cyan: 98 213 221;
+    --hz-bg: 8 12 17;
+    --hz-surface: 17 24 32;
+    --hz-raised: 27 38 49;
+    --hz-line: 232 237 242;
+    --hz-ink: 232 237 242;
+    --hz-muted: 154 168 181;
+    --hz-faint: 112 128 143;
+    --hz-accent: 242 138 67;
+    --hz-azure: 111 168 255;
+    --hz-cyan: 98 213 221;
+    --hz-success: 114 201 139;
     color-scheme: dark;
   }
 
   /* Higher-contrast variant: same material system, stronger hairlines and text. */
   .theme-contrast {
-    --fw-bg: 8 8 10;
-    --fw-surface: 6 10 20;
-    --fw-raised: 16 23 38;
-    --fw-ink: 255 255 255;
-    --fw-muted: 176 182 194;
-    --fw-faint: 132 139 152;
-    --fw-accent: 126 235 163;
-    --fw-azure: 148 188 255;
+    --hz-bg: 3 6 10;
+    --hz-surface: 10 16 24;
+    --hz-raised: 20 30 41;
+    --hz-ink: 255 255 255;
+    --hz-muted: 184 196 208;
+    --hz-faint: 138 152 166;
+    --hz-accent: 255 158 94;
+    --hz-azure: 148 188 255;
+    --hz-success: 126 235 163;
   }
 
   * {
-    border-color: rgb(var(--fw-line) / 0.08);
+    border-color: rgb(var(--hz-line) / 0.08);
   }
 
   html {
     -webkit-text-size-adjust: 100%;
-    background: rgb(var(--fw-bg));
+    background: rgb(var(--hz-bg));
   }
 
   body {
@@ -53,7 +56,8 @@
   h1,
   h2,
   h3 {
-    font-weight: 400;
+    font-weight: 500;
+    letter-spacing: -0.01em;
   }
 
   :focus-visible {
@@ -72,13 +76,13 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--fw-line) / 0.12);
+    background: rgb(var(--hz-line) / 0.12);
     border-radius: 9999px;
     border: 3px solid transparent;
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--fw-line) / 0.22);
+    background: rgb(var(--hz-line) / 0.22);
     background-clip: content-box;
   }
 
@@ -96,54 +100,73 @@
 @layer components {
   /*
    * Glass surface: the material choice. Borders, blur and shadow only reinforce
-   * it. Used by the sidebar, header, cards and popovers so the page reads as one
-   * system.
+   * it. Used by the sidebar, header, floating panels and popovers.
    */
   .glass {
-    background-color: rgb(var(--fw-surface) / 0.62);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
-    border: 1px solid rgb(var(--fw-line) / 0.08);
+    background-color: rgb(var(--hz-surface) / 0.72);
+    -webkit-backdrop-filter: blur(18px) saturate(125%);
+    backdrop-filter: blur(18px) saturate(125%);
+    border: 1px solid rgb(var(--hz-line) / 0.08);
   }
 
   .glass-soft {
-    background-color: rgb(var(--fw-surface) / 0.4);
+    background-color: rgb(var(--hz-surface) / 0.45);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
+  }
+
+  /* Floating information panel over map imagery. */
+  .glass-panel {
+    background-image: linear-gradient(
+      180deg,
+      rgb(var(--hz-surface) / 0.9) 0%,
+      rgb(11 16 23 / 0.84) 100%
+    );
+    -webkit-backdrop-filter: blur(18px) saturate(130%);
+    backdrop-filter: blur(18px) saturate(130%);
+    border: 1px solid rgb(var(--hz-line) / 0.1);
+    box-shadow:
+      0 28px 70px -34px rgb(0 0 0 / 0.95),
+      inset 0 1px 0 0 rgb(255 255 255 / 0.05);
+    border-radius: 6px;
   }
 
   /* Gradient border shell: 1px gradient wrapper with an inset content surface. */
   .shell {
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 1px;
     background-image: linear-gradient(
       to bottom right,
-      rgb(var(--fw-line) / 0.14),
-      rgb(var(--fw-line) / 0.03),
+      rgb(var(--hz-line) / 0.12),
+      rgb(var(--hz-line) / 0.03),
       rgb(0 0 0 / 0)
     );
   }
 
   .shell-inner {
-    border-radius: 11px;
-    background-color: rgb(var(--fw-surface) / 0.92);
-    border: 1px solid rgb(var(--fw-line) / 0.04);
+    border-radius: 7px;
+    background-color: rgb(var(--hz-surface) / 0.9);
+    border: 1px solid rgb(var(--hz-line) / 0.04);
     overflow: hidden;
   }
 
   .hairline {
-    border-color: rgb(var(--fw-line) / 0.08);
+    border-color: rgb(var(--hz-line) / 0.08);
   }
 
   .label {
-    @apply text-3xs font-medium uppercase tracking-[0.16em] text-faint;
+    @apply text-3xs font-medium uppercase tracking-[0.18em] text-faint;
   }
 
   .measure {
     @apply font-mono text-sm tabular-nums text-ink;
   }
 
-  /* Navigation: quiet by default, one green cue when active. */
+  .metric-value {
+    @apply font-mono text-[26px] leading-none tracking-[-0.03em] text-ink tabular-nums;
+  }
+
+  /* Navigation: quiet by default, one mission-orange cue when active. */
   .nav-item {
     @apply relative flex items-center gap-[10px] rounded-control px-[10px] py-[7px] text-[13px] font-light text-muted transition-colors duration-150;
   }
@@ -151,54 +174,67 @@
     @apply bg-line/[0.04] text-ink;
   }
   .nav-item-active {
-    @apply bg-line/[0.06] text-ink;
+    @apply bg-accent/[0.08] text-ink;
+    box-shadow: inset 2px 0 0 rgb(var(--hz-accent) / 0.9);
   }
   .nav-item-active .nav-icon {
     @apply text-accent;
   }
 
-  /* Primary action: off-white pill, near-black label (never green-on-green). */
+  /* Primary action: mission orange, near-black label. */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-[#FAFAFA] px-4 py-2 text-xs font-medium text-[#05070F] transition-colors duration-150 hover:bg-white disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-control bg-accent px-4 py-2 text-xs font-medium text-[#0A0F14] transition-colors duration-150 hover:bg-[#FF9E5E] disabled:opacity-40;
   }
 
   .btn-glass {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line/10 bg-line/[0.04] px-4 py-2 text-xs font-medium text-muted transition-colors duration-150 hover:border-line/20 hover:text-ink;
+    @apply inline-flex items-center justify-center gap-2 rounded-control border border-line/10 bg-line/[0.04] px-4 py-2 text-xs font-medium text-muted transition-colors duration-150 hover:border-line/20 hover:text-ink;
   }
 
   .divider {
     @apply h-px w-full bg-line/[0.07];
+  }
+
+  .map-tool-button {
+    @apply inline-flex size-8 items-center justify-center rounded-control border border-line/10 bg-panel/80 text-muted transition-colors duration-150 hover:border-line/20 hover:text-ink;
+  }
+
+  .map-tool-button-active {
+    @apply border-accent/40 bg-accent/10 text-accent;
+  }
+
+  .data-bar {
+    @apply h-1 rounded-full bg-line/[0.08];
   }
 }
 
 /* MapLibre ships light chrome; theme its controls to the dark field so the map
    reads as one instrument rather than an embedded widget. */
 .maplibregl-ctrl-group {
-  background: rgba(8, 11, 20, 0.82) !important;
-  border: 1px solid rgba(233, 238, 246, 0.1);
+  background: rgba(8, 12, 17, 0.84) !important;
+  border: 1px solid rgba(232, 237, 242, 0.1);
+  border-radius: 4px;
   box-shadow: none !important;
   backdrop-filter: blur(12px);
 }
 .maplibregl-ctrl-group button + button {
-  border-top: 1px solid rgba(233, 238, 246, 0.08) !important;
+  border-top: 1px solid rgba(232, 237, 242, 0.08) !important;
 }
 .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
   filter: invert(1) brightness(1.7);
 }
 .maplibregl-ctrl-attrib {
-  background: rgba(8, 11, 20, 0.82) !important;
-  border-radius: 9999px;
-  color: #8f9aae;
+  background: rgba(8, 12, 17, 0.84) !important;
+  border-radius: 3px;
+  color: #9aa8b5;
 }
 .maplibregl-ctrl-attrib a {
-  color: #b9c3d4 !important;
+  color: #c4cfda !important;
 }
 .maplibregl-ctrl-attrib-button {
-  background-color: rgba(8, 11, 20, 0.9) !important;
+  background-color: rgba(8, 12, 17, 0.9) !important;
 }
 .maplibregl-ctrl-scale {
-  background: rgba(8, 11, 20, 0.82) !important;
-  border-color: rgba(233, 238, 246, 0.3) !important;
-  color: #b9c3d4 !important;
+  background: rgba(8, 12, 17, 0.84) !important;
+  border-color: rgba(232, 237, 242, 0.3) !important;
+  color: #c4cfda !important;
 }
-

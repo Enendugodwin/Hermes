@@ -1,5 +1,6 @@
+import clsx from "clsx";
 import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import { useUiStore } from "@/store/ui";
 import { CommandPalette } from "./CommandPalette";
@@ -9,13 +10,16 @@ import { StatusBar } from "./StatusBar";
 import { TopBar } from "./TopBar";
 
 /**
- * Application shell: full-bleed orbital grid field, glass sidebar, sticky
- * header, scrolling workspace and a persistent status bar.
+ * Application shell: full-bleed orbital field, glass sidebar, sticky header and
+ * status bar. The Overview is a map-first workspace: it owns the full height
+ * between the header and status bar, with no scrolling page frame.
  */
 export function AppShell() {
   const theme = useUiStore((state) => state.theme);
   const setCommandOpen = useUiStore((state) => state.setCommandOpen);
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen);
+  const location = useLocation();
+  const mapWorkspace = location.pathname === "/";
 
   useEffect(() => {
     const root = document.documentElement;
@@ -49,25 +53,36 @@ export function AppShell() {
   }, [setCommandOpen, setSidebarOpen]);
 
   return (
-    <div className="relative flex min-h-screen bg-canvas">
+    <div
+      className={clsx(
+        "relative flex",
+        mapWorkspace ? "h-dvh overflow-hidden" : "min-h-screen",
+      )}
+    >
       <OrbitalField />
 
       <a
         href="#workspace"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-[100] focus:rounded-full focus:bg-[#FAFAFA] focus:px-4 focus:py-2 focus:text-xs focus:text-[#05070F]"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-[100] focus:rounded-control focus:bg-ink focus:px-4 focus:py-2 focus:text-xs focus:text-canvas"
       >
         Skip to workspace
       </a>
 
       <Sidebar />
 
-      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+      <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
         <TopBar />
-        <main id="workspace" className="min-w-0 flex-1">
-          <div className="mx-auto w-full max-w-[1680px] px-3 py-5 sm:px-[22px] sm:py-6">
+        {mapWorkspace ? (
+          <main id="workspace" className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
             <Outlet />
-          </div>
-        </main>
+          </main>
+        ) : (
+          <main id="workspace" className="min-w-0 flex-1">
+            <div className="mx-auto w-full max-w-[1680px] px-3 py-5 sm:px-[22px] sm:py-6">
+              <Outlet />
+            </div>
+          </main>
+        )}
         <StatusBar />
       </div>
 

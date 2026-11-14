@@ -48,7 +48,7 @@ function Checkbox({
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="size-3.5 rounded border-line/40 bg-transparent accent-[#60D58B]"
+        className="size-3.5 rounded border-line/40 bg-transparent accent-[#F28A43]"
       />
       {children}
     </label>
@@ -150,7 +150,7 @@ export function MapFilters({
             step={5}
             value={filters.minFrp}
             onChange={(event) => patch({ minFrp: Number(event.target.value) })}
-            className="mt-[6px] w-full accent-[#FB923C]"
+            className="mt-[6px] w-full accent-[#F28A43]"
           />
         </label>
 
@@ -190,7 +190,7 @@ export function MapFilters({
           Density heatmap
         </Checkbox>
         <Checkbox checked={filters.basemap} onChange={(basemap) => patch({ basemap })}>
-          Basemap (© OpenStreetMap)
+          Imagery basemap (NASA GIBS / © OpenStreetMap)
         </Checkbox>
         <Checkbox
           checked={filters.harmonized}

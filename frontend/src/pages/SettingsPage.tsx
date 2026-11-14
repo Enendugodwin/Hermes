@@ -23,7 +23,7 @@ function CapabilityRow({ label, enabled, note }: { label: string; enabled: boole
   return (
     <li className="flex items-start gap-[10px] border-b border-line/[0.06] px-[22px] py-[11px] last:border-0">
       {enabled ? (
-        <Check className="mt-[2px] size-3.5 shrink-0 text-accent" aria-hidden />
+        <Check className="mt-[2px] size-3.5 shrink-0 text-ok" aria-hidden />
       ) : (
         <X className="mt-[2px] size-3.5 shrink-0 text-faint" aria-hidden />
       )}

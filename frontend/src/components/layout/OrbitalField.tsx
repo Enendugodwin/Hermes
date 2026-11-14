@@ -64,8 +64,8 @@ export function OrbitalField({ className }: { className?: string }) {
 
       // Depth glow behind the horizon.
       const glow = ctx.createRadialGradient(vx, horizon, 0, vx, horizon, Math.max(w, h) * 0.55);
-      glow.addColorStop(0, `rgba(96, 213, 139, ${0.055 * breath})`);
-      glow.addColorStop(0.45, `rgba(96, 213, 139, ${0.02 * breath})`);
+      glow.addColorStop(0, `rgba(242, 138, 67, ${0.055 * breath})`);
+      glow.addColorStop(0.45, `rgba(242, 138, 67, ${0.02 * breath})`);
       glow.addColorStop(1, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, w, h);
@@ -80,7 +80,7 @@ export function OrbitalField({ className }: { className?: string }) {
         const edge = Math.abs(bottomX - vx) / (w * 0.75);
         const alpha = Math.max(0, 0.23 - edge * 0.18) * breath;
         if (alpha <= 0.002) continue;
-        ctx.strokeStyle = `rgba(96, 213, 139, ${alpha})`;
+        ctx.strokeStyle = `rgba(242, 138, 67, ${alpha})`;
         ctx.beginPath();
         ctx.moveTo(vx, horizon);
         ctx.lineTo(bottomX, bottom);
@@ -98,7 +98,7 @@ export function OrbitalField({ className }: { className?: string }) {
         const alpha = (0.06 + depth * 0.18) * breath;
         const leftX = vx + (-w * 0.45 - vx) * t;
         const rightX = vx + (w * 1.45 - vx) * t;
-        ctx.strokeStyle = `rgba(96, 213, 139, ${alpha})`;
+        ctx.strokeStyle = `rgba(242, 138, 67, ${alpha})`;
         ctx.beginPath();
         ctx.moveTo(leftX, y);
         ctx.lineTo(rightX, y);
@@ -106,7 +106,7 @@ export function OrbitalField({ className }: { className?: string }) {
       }
 
       // Horizon hairline.
-      ctx.strokeStyle = `rgba(114, 165, 249, ${0.1 * breath})`;
+      ctx.strokeStyle = `rgba(111, 168, 255, ${0.1 * breath})`;
       ctx.beginPath();
       ctx.moveTo(0, horizon);
       ctx.lineTo(w, horizon);
@@ -152,7 +152,7 @@ export function OrbitalField({ className }: { className?: string }) {
       className={`pointer-events-none fixed inset-0 z-0 overflow-hidden ${className ?? ""}`}
       style={{
         background:
-          "radial-gradient(120% 80% at 50% 66%, #0B101D 0%, #131315 55%, #131315 100%)",
+          "radial-gradient(120% 80% at 50% 66%, #0B1118 0%, #080C11 55%, #080C11 100%)",
       }}
     >
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />

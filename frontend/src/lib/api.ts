@@ -82,7 +82,7 @@ export async function apiFetch<T>(
     });
   } catch (cause) {
     throw new ApiError(
-      "The FIREWATCH X API is unreachable. Start the backend on port 8100.",
+      "The HERMES API is unreachable. Start the backend on port 8200.",
       { code: "network_error", status: 0, details: { cause: String(cause) } },
     );
   }

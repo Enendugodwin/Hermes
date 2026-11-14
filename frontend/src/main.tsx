@@ -1,7 +1,6 @@
 import "@fontsource-variable/inter";
-import "@fontsource-variable/newsreader";
-import "@fontsource/jetbrains-mono/400.css";
-import "@fontsource/jetbrains-mono/500.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 import "./styles/globals.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

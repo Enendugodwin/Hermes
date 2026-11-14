@@ -5,6 +5,72 @@ import { cleanup } from "@testing-library/react";
 
 import { useUiStore } from "@/store/ui";
 
+/**
+ * MapLibre needs WebGL, which jsdom does not provide. The map is exercised
+ * through its pure layer helpers and a stubbed renderer; page contracts remain
+ * testable without a GPU.
+ */
+vi.mock("maplibre-gl", () => {
+  class MapStub {
+    on() {
+      return this;
+    }
+    addControl() {
+      return this;
+    }
+    addSource() {
+      return this;
+    }
+    addLayer() {
+      return this;
+    }
+    getLayer(id: string) {
+      return { id };
+    }
+    setPaintProperty() {
+      return this;
+    }
+    getSource() {
+      return { setData: () => undefined, setTiles: () => undefined };
+    }
+    setLayoutProperty() {
+      return this;
+    }
+    getBounds() {
+      return {
+        getWest: () => -180,
+        getSouth: () => -85,
+        getEast: () => 180,
+        getNorth: () => 85,
+      };
+    }
+    getZoom() {
+      return 2;
+    }
+    getCanvas() {
+      return { style: { cursor: "" } };
+    }
+    flyTo() {
+      return this;
+    }
+    easeTo() {
+      return this;
+    }
+    remove() {
+      return undefined;
+    }
+  }
+
+  return {
+    default: {
+      Map: MapStub,
+      NavigationControl: class {},
+      ScaleControl: class {},
+      GeoJSONSource: class {},
+    },
+  };
+});
+
 beforeEach(() => {
   // Deterministic period: fixtures live around 2026-10-29.
   useUiStore.setState({

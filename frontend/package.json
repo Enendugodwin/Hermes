@@ -1,9 +1,9 @@
 {
-  "name": "firewatch-x-frontend",
+  "name": "hermes-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "FIREWATCH X — global fire intelligence console",
+  "description": "HERMES — Earth observation intelligence console",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -14,8 +14,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.1.0",
-    "@fontsource-variable/newsreader": "^5.1.0",
-    "@fontsource/jetbrains-mono": "5.1.0",
+    "@fontsource/ibm-plex-mono": "^5.1.0",
     "@tanstack/react-query": "5.59.0",
     "clsx": "2.1.1",
     "lucide-react": "0.451.0",

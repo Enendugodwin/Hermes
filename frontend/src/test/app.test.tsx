@@ -15,8 +15,8 @@ describe("application shell", () => {
     const nav = await screen.findByRole("navigation", { name: /primary navigation/i });
     expect(within(nav).getByRole("link", { name: /overview/i })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: /burning calendar/i })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: /global fire map/i })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: /ai assistant/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: /intelligence map/i })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: /hermes intelligence/i })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: /settings/i })).toBeInTheDocument();
   });
 

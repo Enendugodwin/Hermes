@@ -82,7 +82,7 @@ export const useUiStore = create<UiState>()(
         }),
     }),
     {
-      name: "firewatch.ui",
+      name: "hermes.ui",
       partialize: (state) => ({
         theme: state.theme,
         sidebarCollapsed: state.sidebarCollapsed,

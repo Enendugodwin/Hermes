@@ -403,7 +403,7 @@ export function RawArchivePage() {
           <div>
             <DataRow label="Status">
               {keyState?.configured ? (
-                <span className="text-accent">configured</span>
+                <span className="text-ok">configured</span>
               ) : (
                 <span className="text-warn">not configured</span>
               )}

@@ -56,10 +56,15 @@ export function useSources() {
   });
 }
 
-export function useDashboardOverview() {
+export function useDashboardOverview(start?: string, end?: string) {
+  const params = new URLSearchParams();
+  if (start) params.set("start_date", start);
+  if (end) params.set("end_date", end);
+  const query = params.toString();
   return useQuery({
-    queryKey: queryKeys.dashboard,
-    queryFn: () => apiFetch<DashboardOverview>("/api/v1/dashboard"),
+    queryKey: [...queryKeys.dashboard, start ?? "", end ?? ""],
+    queryFn: () =>
+      apiFetch<DashboardOverview>(`/api/v1/dashboard${query ? `?${query}` : ""}`),
     staleTime: 30_000,
   });
 }

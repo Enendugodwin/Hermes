@@ -148,9 +148,9 @@ describe("map layer helpers", () => {
 
   it("uses the fire severity palette for FRP", () => {
     const expression = JSON.stringify(frpColorExpression());
-    expect(expression).toContain("#FACC15");
-    expect(expression).toContain("#FB923C");
-    expect(expression).toContain("#EF4444");
+    expect(expression).toContain("#FFB45C");
+    expect(expression).toContain("#F28A43");
+    expect(expression).toContain("#E65C50");
   });
 
   it("recolours detections for brighter themes", () => {
@@ -158,23 +158,26 @@ describe("map layer helpers", () => {
     const dark = JSON.stringify(frpColorExpression(MAP_THEMES.orbital.fire));
 
     expect(light).toContain("#B91C1C");
-    expect(light).not.toContain("#FACC15");
-    expect(dark).toContain("#FACC15");
+    expect(light).not.toContain("#FFB45C");
+    expect(dark).toContain("#FFB45C");
   });
 
-  it("defaults to the bright daylight theme and keeps a dark option", () => {
-    expect(DEFAULT_THEME).toBe("daylight");
+  it("defaults to NASA satellite imagery and keeps a dark option", () => {
+    expect(DEFAULT_THEME).toBe("satellite");
     expect(THEME_ORDER).toContain("orbital");
 
+    const satelliteBasemap = buildBasemapLayer(MAP_THEMES.satellite).paint as Record<string, unknown>;
     const lightBasemap = buildBasemapLayer(MAP_THEMES.daylight).paint as Record<string, unknown>;
     const darkBasemap = buildBasemapLayer(MAP_THEMES.orbital).paint as Record<string, unknown>;
 
+    expect(MAP_THEMES.satellite.tiles[0]).toContain("gibs.earthdata.nasa.gov");
+    expect(satelliteBasemap["raster-opacity"]).toBeGreaterThan(0.5);
     expect(lightBasemap["raster-opacity"]).toBe(1);
     expect(lightBasemap["raster-brightness-max"]).toBe(1);
     expect(darkBasemap["raster-brightness-max"]).toBeLessThan(0.5);
-    expect(buildMapStyle(MAP_THEMES.daylight).layers[0]).toMatchObject({
+    expect(buildMapStyle(MAP_THEMES.satellite).layers[0]).toMatchObject({
       id: "background",
-      paint: { "background-color": MAP_THEMES.daylight.background },
+      paint: { "background-color": MAP_THEMES.satellite.background },
     });
   });
 
@@ -237,8 +240,8 @@ describe("fire map page", () => {
 
     expect(await screen.findByText(/layers & filters/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/search the map/i)).toBeInTheDocument();
-    // Bright earth is the default; the dark theme remains one click away.
-    expect(screen.getByRole("button", { name: /daylight/i })).toHaveAttribute(
+    // NASA satellite imagery is the default; the dark theme remains one click away.
+    expect(screen.getByRole("button", { name: /satellite/i })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -260,7 +263,7 @@ describe("fire map page", () => {
     fireEvent.click(orbital);
 
     expect(orbital).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: /daylight/i })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /satellite/i })).toHaveAttribute(
       "aria-pressed",
       "false",
     );

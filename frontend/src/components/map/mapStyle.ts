@@ -2,16 +2,18 @@
 
 /**
  * Self-contained styles. The fire layers live in their own zero-dependency base
- * style; the OSM raster basemap is attached afterwards so a slow, rate-limited
- * or blocked tile server can never stop the data from loading.
+ * style; the imagery basemap is attached afterwards so a slow, rate-limited or
+ * blocked tile server can never stop the data from loading.
  */
 
 export const OSM_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+export const GIBS_TILES =
+  "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/500m/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg";
 
-export const BASEMAP_SOURCE = "osm";
-export const BASEMAP_LAYER = "osm";
+export const BASEMAP_SOURCE = "basemap";
+export const BASEMAP_LAYER = "basemap";
 
-export type MapThemeId = "daylight" | "terrain" | "orbital" | "paper";
+export type MapThemeId = "satellite" | "terrain" | "orbital" | "paper" | "daylight";
 
 export interface MapTheme {
   id: MapThemeId;
@@ -21,6 +23,10 @@ export interface MapTheme {
   hint: string;
   /** Fallback fill when the basemap is off or its tiles fail. */
   background: string;
+  /** Raster tiles for this context layer. */
+  tiles: string[];
+  attribution: string;
+  maxzoom: number;
   basemap: {
     opacity: number;
     saturation: number;
@@ -48,45 +54,55 @@ export interface MapTheme {
   swatch: [string, string];
 }
 
+const FIRE = { low: "#FFB45C", medium: "#F28A43", high: "#E65C50" };
+const SENSOR = { MODIS: "#6FA8FF", VIIRS: "#C58CFF" };
+const HEAT = {
+  low: "rgba(255,180,92,0.32)",
+  mid: "rgba(242,138,67,0.66)",
+  high: "rgba(230,92,80,0.88)",
+  top: "rgba(255,236,218,0.95)",
+  opacity: 0.62,
+  intensity: 2.1,
+};
+
 /**
- * Bright earth is the default: the fire signal reads best over a legible
- * basemap, and dark-only maps are hard to use on projectors and in daylight.
- * The orbital dark theme stays available for night work.
+ * Satellite is the default: NASA GIBS Blue Marble gives Hermes an authentic
+ * Earth-observation field without an API key. The lighter themes remain for
+ * daylight and print work.
  */
 export const MAP_THEMES: Record<MapThemeId, MapTheme> = {
-  daylight: {
-    id: "daylight",
-    label: "Daylight",
-    hint: "Bright earth, deep detection colours",
-    background: "#A9C3D4",
+  satellite: {
+    id: "satellite",
+    label: "Satellite",
+    hint: "NASA Blue Marble imagery, dark mission field",
+    background: "#080C11",
+    tiles: [GIBS_TILES],
+    attribution: "Imagery \u00a9 NASA EOSDIS GIBS",
+    maxzoom: 8,
     basemap: {
-      opacity: 1,
-      saturation: 0.35,
-      contrast: 0.02,
-      brightnessMin: 0,
-      brightnessMax: 1,
+      opacity: 0.92,
+      saturation: 0.7,
+      contrast: 0.06,
+      brightnessMin: 0.02,
+      brightnessMax: 0.86,
       hueRotate: 0,
     },
-    fire: { low: "#B45309", medium: "#EA580C", high: "#B91C1C" },
-    sensor: { MODIS: "#1D4ED8", VIIRS: "#A21CAF" },
-    stroke: "rgba(255,255,255,0.95)",
-    strokeWidth: 1.6,
-    cellOpacity: 0.55,
-    heat: {
-      low: "rgba(250,204,21,0.35)",
-      mid: "rgba(234,88,12,0.6)",
-      high: "rgba(153,27,27,0.8)",
-      top: "rgba(120,20,20,0.9)",
-      opacity: 0.55,
-      intensity: 1.6,
-    },
-    swatch: ["#DCE8F0", "#7FA3BC"],
+    fire: FIRE,
+    sensor: SENSOR,
+    stroke: "rgba(232,237,242,0.55)",
+    strokeWidth: 1.1,
+    cellOpacity: 0.68,
+    heat: HEAT,
+    swatch: ["#0B1118", "#2B4A5E"],
   },
   terrain: {
     id: "terrain",
     label: "Terrain",
     hint: "Warm, sepia-toned land",
     background: "#D8CFB8",
+    tiles: [OSM_TILES],
+    attribution: "\u00a9 OpenStreetMap contributors",
+    maxzoom: 19,
     basemap: {
       opacity: 1,
       saturation: 0.25,
@@ -113,36 +129,35 @@ export const MAP_THEMES: Record<MapThemeId, MapTheme> = {
   orbital: {
     id: "orbital",
     label: "Orbital",
-    hint: "Dark field for night work",
-    background: "#05070F",
+    hint: "Dark field for night operations",
+    background: "#05080D",
+    tiles: [OSM_TILES],
+    attribution: "\u00a9 OpenStreetMap contributors",
+    maxzoom: 19,
     basemap: {
-      opacity: 0.45,
+      opacity: 0.35,
       saturation: -1,
       contrast: 0.05,
       brightnessMin: 0.02,
-      brightnessMax: 0.16,
+      brightnessMax: 0.14,
       hueRotate: 0,
     },
-    fire: { low: "#FACC15", medium: "#FB923C", high: "#EF4444" },
-    sensor: { MODIS: "#72A5F9", VIIRS: "#E879F9" },
-    stroke: "rgba(255,255,255,0.5)",
+    fire: FIRE,
+    sensor: SENSOR,
+    stroke: "rgba(232,237,242,0.5)",
     strokeWidth: 1,
-    cellOpacity: 0.4,
-    heat: {
-      low: "rgba(250,204,21,0.35)",
-      mid: "rgba(251,146,60,0.7)",
-      high: "rgba(239,68,68,0.9)",
-      top: "rgba(255,255,255,0.95)",
-      opacity: 0.55,
-      intensity: 2.4,
-    },
-    swatch: ["#0B1020", "#1E2A3D"],
+    cellOpacity: 0.6,
+    heat: HEAT,
+    swatch: ["#05080D", "#1B2631"],
   },
   paper: {
     id: "paper",
     label: "Paper",
     hint: "Near-white, for screenshots and print",
     background: "#F2F0EA",
+    tiles: [OSM_TILES],
+    attribution: "\u00a9 OpenStreetMap contributors",
+    maxzoom: 19,
     basemap: {
       opacity: 1,
       saturation: -0.85,
@@ -166,11 +181,48 @@ export const MAP_THEMES: Record<MapThemeId, MapTheme> = {
     },
     swatch: ["#FBFAF6", "#C9C4B6"],
   },
+  daylight: {
+    id: "daylight",
+    label: "Daylight",
+    hint: "Bright earth, deep detection colours",
+    background: "#A9C3D4",
+    tiles: [OSM_TILES],
+    attribution: "\u00a9 OpenStreetMap contributors",
+    maxzoom: 19,
+    basemap: {
+      opacity: 1,
+      saturation: 0.35,
+      contrast: 0.02,
+      brightnessMin: 0,
+      brightnessMax: 1,
+      hueRotate: 0,
+    },
+    fire: { low: "#B45309", medium: "#EA580C", high: "#B91C1C" },
+    sensor: { MODIS: "#1D4ED8", VIIRS: "#A21CAF" },
+    stroke: "rgba(255,255,255,0.95)",
+    strokeWidth: 1.6,
+    cellOpacity: 0.55,
+    heat: {
+      low: "rgba(250,204,21,0.35)",
+      mid: "rgba(234,88,12,0.6)",
+      high: "rgba(153,27,27,0.8)",
+      top: "rgba(120,20,20,0.9)",
+      opacity: 0.55,
+      intensity: 1.6,
+    },
+    swatch: ["#DCE8F0", "#7FA3BC"],
+  },
 };
 
-export const DEFAULT_THEME: MapThemeId = "daylight";
+export const DEFAULT_THEME: MapThemeId = "satellite";
 
-export const THEME_ORDER: MapThemeId[] = ["daylight", "terrain", "orbital", "paper"];
+export const THEME_ORDER: MapThemeId[] = [
+  "satellite",
+  "terrain",
+  "orbital",
+  "paper",
+  "daylight",
+];
 
 export function buildMapStyle(theme: MapTheme = MAP_THEMES[DEFAULT_THEME]): StyleSpecification {
   return {
@@ -186,17 +238,17 @@ export function buildMapStyle(theme: MapTheme = MAP_THEMES[DEFAULT_THEME]): Styl
   };
 }
 
-export function buildBasemapSource() {
+export function buildBasemapSource(theme: MapTheme = MAP_THEMES[DEFAULT_THEME]) {
   return {
     type: "raster" as const,
-    tiles: [OSM_TILES],
+    tiles: theme.tiles,
     tileSize: 256,
-    maxzoom: 19,
-    attribution: "\u00a9 OpenStreetMap contributors",
+    maxzoom: theme.maxzoom,
+    attribution: theme.attribution,
   };
 }
 
-/** Muted raster context tiles; the paint is re-applied whenever the theme changes. */
+/** Context imagery; the paint is re-applied whenever the theme changes. */
 export function buildBasemapLayer(theme: MapTheme): LayerSpecification {
   return {
     id: BASEMAP_LAYER,
