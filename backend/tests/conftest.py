@@ -65,6 +65,7 @@ OBSERVATION_TABLES = (
     "observation_matches",
     "fire_observations",
     "raw_observations",
+    "raw_payload_blocks",
     "raw_exports",
     "app_settings",
     "source_availability",

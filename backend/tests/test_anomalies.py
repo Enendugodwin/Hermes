@@ -35,7 +35,6 @@ def _seed(sensor: str, source_code: str, satellite: str, days: list[tuple[date, 
                         daynight="D",
                         processing_version="2.0NRT",
                         source_product=source_code,
-                        source_payload={"seed": True},
                         quality_flags={"seeded": True},
                         is_synthetic=False,
                     )

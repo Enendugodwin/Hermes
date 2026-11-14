@@ -225,7 +225,6 @@ def test_summary_and_matches_are_scoped_to_the_requested_period(client) -> None:
             longitude=-60.2,
             acquired_at=datetime(day.year, day.month, day.day, 13, 45, tzinfo=UTC),
             source_product=code,
-            source_payload={},
             quality_flags={},
         )
         session.add(row)

@@ -16,6 +16,7 @@ import csv
 import io
 import random
 import re
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -34,6 +35,66 @@ MAX_DAY_RANGE = 5
 RETRYABLE_STATUS = {408, 425, 429, 500, 502, 503, 504}
 AUTH_FAILURE_MARKERS = ("invalid map_key", "invalid map key", "invalid key")
 ISO_DATE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+
+#: Repeated provider failures trip a short, per-source circuit breaker so a
+#: dead upstream is not hammered by every window of a long backfill.
+DEFAULT_CIRCUIT_FAILURE_THRESHOLD = 5
+DEFAULT_CIRCUIT_COOLDOWN_SECONDS = 60.0
+DEFAULT_REQUESTS_PER_MINUTE = 300
+
+_CIRCUIT_LOCK = threading.Lock()
+_CIRCUIT_STATE: dict[str, dict[str, float]] = {}
+_RATE_LOCK = threading.Lock()
+_LAST_REQUEST_AT = 0.0
+
+
+def reset_circuit_breakers() -> None:
+    """Clear breaker state (tests and operator recovery)."""
+    with _CIRCUIT_LOCK:
+        _CIRCUIT_STATE.clear()
+
+
+def reset_rate_limiter() -> None:
+    """Clear the process-wide FIRMS request clock (tests)."""
+    global _LAST_REQUEST_AT
+    with _RATE_LOCK:
+        _LAST_REQUEST_AT = 0.0
+
+
+def circuit_status(source_code: str) -> dict[str, float | bool]:
+    """Current breaker state for a source, suitable for health endpoints."""
+    with _CIRCUIT_LOCK:
+        state = _CIRCUIT_STATE.get(source_code)
+        if state is None:
+            return {"open": False, "failures": 0, "retry_in_seconds": 0.0}
+        remaining = max(0.0, float(state["opened_until"]) - time.monotonic())
+        return {
+            "open": remaining > 0,
+            "failures": int(state["failures"]),
+            "retry_in_seconds": round(remaining, 1),
+        }
+
+
+def _circuit_remaining(source_code: str) -> float:
+    with _CIRCUIT_LOCK:
+        state = _CIRCUIT_STATE.get(source_code)
+        if state is None:
+            return 0.0
+        return max(0.0, float(state["opened_until"]) - time.monotonic())
+
+
+def _circuit_success(source_code: str) -> None:
+    with _CIRCUIT_LOCK:
+        _CIRCUIT_STATE.pop(source_code, None)
+
+
+def _circuit_failure(source_code: str, *, threshold: int, cooldown_seconds: float) -> None:
+    with _CIRCUIT_LOCK:
+        state = _CIRCUIT_STATE.setdefault(source_code, {"failures": 0.0, "opened_until": 0.0})
+        state["failures"] += 1
+        if state["failures"] >= threshold:
+            state["opened_until"] = time.monotonic() + cooldown_seconds
+            state["failures"] = 0.0
 
 
 class FirmsError(RuntimeError):
@@ -161,6 +222,9 @@ class FirmsClient:
         max_retries: int = 4,
         transport: httpx.BaseTransport | None = None,
         sleep: Callable[[float], None] = time.sleep,
+        circuit_failure_threshold: int = DEFAULT_CIRCUIT_FAILURE_THRESHOLD,
+        circuit_cooldown_seconds: float = DEFAULT_CIRCUIT_COOLDOWN_SECONDS,
+        requests_per_minute: int = DEFAULT_REQUESTS_PER_MINUTE,
     ) -> None:
         self.map_key = map_key
         self.base_url = base_url.rstrip("/")
@@ -168,6 +232,9 @@ class FirmsClient:
         self.max_retries = max(1, max_retries)
         self._transport = transport
         self._sleep = sleep
+        self.circuit_failure_threshold = max(1, circuit_failure_threshold)
+        self.circuit_cooldown_seconds = max(0.0, circuit_cooldown_seconds)
+        self.requests_per_minute = max(0, requests_per_minute)
 
     # -- public API --------------------------------------------------------
     @property
@@ -189,6 +256,13 @@ class FirmsClient:
             raise FirmsError(f"Unsupported FIRMS source {source_code!r}.")
         if not 1 <= day_range <= MAX_DAY_RANGE:
             raise FirmsError(f"day_range must be between 1 and {MAX_DAY_RANGE}.")
+
+        remaining = _circuit_remaining(source_code)
+        if remaining > 0:
+            raise FirmsTemporaryError(
+                f"FIRMS circuit is open for {source_code}; retrying in "
+                f"{int(remaining) + 1}s. The provider has failed repeatedly."
+            )
 
         path = f"/area/csv/{self.map_key}/{source_code}/{bbox}/{day_range}"
         if request_date is not None:
@@ -243,6 +317,7 @@ class FirmsClient:
             result = self._parse(response, source_code, bbox, day_range, request_date)
             result.duration_ms = duration_ms
             result.attempts = attempts
+            _circuit_success(source_code)
             logger.info(
                 "firms_fetch",
                 source=source_code,
@@ -257,6 +332,11 @@ class FirmsClient:
             )
             return result
 
+        _circuit_failure(
+            source_code,
+            threshold=self.circuit_failure_threshold,
+            cooldown_seconds=self.circuit_cooldown_seconds,
+        )
         raise FirmsTemporaryError(
             f"FIRMS retrieval failed after {attempts} attempts for {source_code}: {last_error}"
         )
@@ -286,7 +366,23 @@ class FirmsClient:
 
         # -- internals ---------------------------------------------------------
 
+    def _throttle(self) -> None:
+        """Keep the process under the configured FIRMS request budget."""
+        if self.requests_per_minute <= 0:
+            return
+        global _LAST_REQUEST_AT
+        interval = 60.0 / self.requests_per_minute
+        with _RATE_LOCK:
+            now = time.monotonic()
+            if _LAST_REQUEST_AT:
+                wait = interval - (now - _LAST_REQUEST_AT)
+                if wait > 0:
+                    self._sleep(wait)
+                    now = time.monotonic()
+            _LAST_REQUEST_AT = now
+
     def _get(self, url: str) -> httpx.Response:
+        self._throttle()
         with httpx.Client(
             timeout=self.timeout,
             transport=self._transport,

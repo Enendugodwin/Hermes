@@ -38,6 +38,7 @@ def test_migrations_create_the_full_schema(migrated: Path) -> None:
         "harmonization_coverage",
         "history_jobs",
         "raw_exports",
+        "raw_payload_blocks",
         "app_settings",
         "users",
         "auth_sessions",
@@ -50,7 +51,7 @@ def test_migration_is_applied_once(migrated: Path) -> None:
     with get_engine().connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
 
-    assert revision == "0016_auth_rbac"
+    assert revision == "0018_payload_blocks"
 
 
 def test_seed_is_idempotent(migrated: Path) -> None:

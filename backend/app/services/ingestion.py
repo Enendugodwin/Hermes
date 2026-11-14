@@ -26,9 +26,11 @@ from app.db.models import (
     IngestionPartition,
     IngestionRun,
     RawObservation,
+    RawPayloadBlock,
     SourceAvailability,
 )
 from app.db.session import session_scope
+from app.services import integrity
 from app.services.firms.client import (
     AvailabilityWindow,
     FirmsAuthError,
@@ -46,9 +48,7 @@ logger = get_logger(__name__)
 _COVERAGE_CACHE: dict[str, AvailabilityWindow | None] = {}
 
 
-def _product_coverage(
-    client: FirmsClient, source_code: str
-) -> AvailabilityWindow | None:
+def _product_coverage(client: FirmsClient, source_code: str) -> AvailabilityWindow | None:
     if source_code not in _COVERAGE_CACHE:
         try:
             _COVERAGE_CACHE[source_code] = client.fetch_availability(source_code)
@@ -80,6 +80,9 @@ def build_client() -> FirmsClient:
         base_url=settings.firms_base_url,
         timeout=settings.firms_request_timeout,
         max_retries=settings.firms_max_retries,
+        circuit_failure_threshold=settings.firms_circuit_failure_threshold,
+        circuit_cooldown_seconds=settings.firms_circuit_cooldown_seconds,
+        requests_per_minute=settings.firms_requests_per_minute,
     )
 
 
@@ -130,7 +133,7 @@ def _bulk_insert(
     Insert many rows with duplicate protection, as fast as the engine allows.
 
     PostgreSQL takes a COPY into a temporary table followed by one
-    ``INSERT … SELECT … ON CONFLICT DO NOTHING``: a single round trip per batch,
+    ``INSERT ΓÇª SELECT ΓÇª ON CONFLICT DO NOTHING``: a single round trip per batch,
     which is roughly an order of magnitude faster than row-at-a-time inserts.
     SQLite uses a chunked executemany with the same conflict rule.
     """
@@ -237,6 +240,10 @@ def _store_response(
         item = normalized.to_row()
         payload = item["source_payload"]
         blob = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        try:
+            acq_day = date.fromisoformat(str(payload.get("acq_date", ""))[:10])
+        except ValueError:
+            acq_day = item["acquired_at"].date()
         raw_rows.append(
             {
                 "id": uuid.uuid4(),
@@ -245,15 +252,32 @@ def _store_response(
                 "source_record_id": record_id,
                 "content_hash": hashlib.sha256(blob).hexdigest(),
                 "payload": payload,
+                "acq_date": acq_day,
                 "is_synthetic": is_synthetic,
             }
         )
         fire_rows.append(
-            {"source_id": source.id, "run_id": run.id, "is_synthetic": is_synthetic, **item}
+            {
+                "source_id": source.id,
+                "run_id": run.id,
+                "is_synthetic": is_synthetic,
+                **{key: value for key, value in item.items() if key != "source_payload"},
+            }
         )
 
     if not fire_rows:
         return 0
+
+    settings = get_settings()
+    blocks = _build_payload_blocks(
+        session,
+        source_id=source.id,
+        raw_rows=raw_rows,
+        block_rows=settings.raw_block_rows,
+        level=settings.archive_compression_level,
+    )
+    session.add_all(blocks)
+    session.flush()
 
     _bulk_insert(
         session,
@@ -267,7 +291,59 @@ def _store_response(
         fire_rows,
         conflict_columns=("source_id", "source_record_id"),
     )
+
+    # A re-ingested batch can be entirely duplicate; do not keep its blocks.
+    for block in blocks:
+        referenced = session.scalar(
+            select(RawObservation.id).where(RawObservation.block_id == block.id).limit(1)
+        )
+        if referenced is None:
+            session.delete(block)
     return inserted
+
+
+def _build_payload_blocks(
+    session: Session,
+    *,
+    source_id: uuid.UUID,
+    raw_rows: list[dict],
+    block_rows: int,
+    level: int,
+) -> list[RawPayloadBlock]:
+    """Compress payloads per acquisition day in ~10x-ratio blocks."""
+    block_rows = max(1, block_rows)
+    by_day: dict[date, list[dict]] = {}
+    for row in raw_rows:
+        by_day.setdefault(row["acq_date"], []).append(row)
+
+    blocks: list[RawPayloadBlock] = []
+    for acq_date, day_rows in sorted(by_day.items()):
+        for start in range(0, len(day_rows), block_rows):
+            chunk = day_rows[start : start + block_rows]
+            content = b"\n".join(
+                json.dumps(row["payload"], sort_keys=True, separators=(",", ":")).encode()
+                for row in chunk
+            )
+            compressed = integrity.gzip_bytes(content, level=level)
+            block = RawPayloadBlock(
+                id=uuid.uuid4(),
+                source_id=source_id,
+                acq_date=acq_date,
+                codec="gzip",
+                compression_level=level,
+                rows=len(chunk),
+                uncompressed_bytes=len(content),
+                compressed_bytes=len(compressed),
+                uncompressed_sha256=hashlib.sha256(content).hexdigest(),
+                compressed_sha256=hashlib.sha256(compressed).hexdigest(),
+                data=compressed,
+            )
+            blocks.append(block)
+            for index, row in enumerate(chunk):
+                row["block_id"] = block.id
+                row["block_row"] = index
+                row.pop("payload", None)
+    return blocks
 
 
 def _upsert_availability(
@@ -417,16 +493,13 @@ def _ingest(
         had_records = response.record_count > 0
         covered = True
         registry = get_source(source_code)
-        if (
-            not had_records
-            and registry is not None
-            and registry.is_standard_processing
-        ):
+        if not had_records and registry is not None:
+            # A zero-row response is only "empty" when the provider actually
+            # covers the window. NRT products lag too; never report an
+            # unprocessed day as a quiet one.
             window = _product_coverage(client, source_code)
             if window is not None and getattr(window, "min_date", None) is not None:
-                covered = bool(
-                    window.covers(window_start) and window.covers(window_end)
-                )
+                covered = bool(window.covers(window_start) and window.covers(window_end))
         _upsert_availability(
             session,
             source.id,
@@ -507,7 +580,7 @@ def ingest_range(
 
 
 class StaticCsvClient(FirmsClient):
-    """Client that replays a CSV payload — fixture loading and tests only."""
+    """Client that replays a CSV payload ΓÇö fixture loading and tests only."""
 
     def __init__(self, csv_text: str) -> None:
         super().__init__(map_key="fixture", max_retries=1, sleep=lambda _seconds: None)
@@ -568,7 +641,7 @@ def sync_availability(
     """
     Ask FIRMS which dates the product covers, then record one status per date.
 
-    Dates inside the provider's coverage window are ``available`` — they may
+    Dates inside the provider's coverage window are ``available`` ΓÇö they may
     contain zero detections and that is still an observed day. Dates outside the
     window are recorded as ``before_coverage`` or ``not_yet_available`` so a gap
     is never mistaken for quiet conditions.

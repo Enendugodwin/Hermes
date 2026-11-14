@@ -30,7 +30,6 @@ def _observation(session, *, code: str, record: str, sensor: str, lon: float) ->
         longitude=lon,
         acquired_at=datetime(2024, 6, 1, 13, 45, tzinfo=UTC),
         source_product=code,
-        source_payload={},
         quality_flags={},
     )
     session.add(row)

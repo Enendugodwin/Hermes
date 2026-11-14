@@ -133,12 +133,15 @@ def main() -> int:
                 f"inserted={state['inserted']:,} "
                 f"(ETA {int((state.get('eta_seconds') or 0) / 60)}m)"
             )
-        elif state.get("phase") == "harmonizing" and state.get("processed"):
-            if state["processed"] % 50 == 0:
-                print(
-                    f"  harmonized {state['processed']}/{state['days']} day(s), "
-                    f"pairs={state.get('pairs', 0):,}"
-                )
+        elif (
+            state.get("phase") == "harmonizing"
+            and state.get("processed")
+            and state["processed"] % 50 == 0
+        ):
+            print(
+                f"  harmonized {state['processed']}/{state['days']} day(s), "
+                f"pairs={state.get('pairs', 0):,}"
+            )
 
     if args.job_id:
         job_id = uuid.UUID(args.job_id)

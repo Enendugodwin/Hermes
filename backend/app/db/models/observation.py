@@ -1,4 +1,4 @@
-"""Canonical fire observations — the primary analytical table."""
+"""Canonical fire observations ΓÇö the primary analytical table."""
 
 from __future__ import annotations
 
@@ -58,7 +58,8 @@ class FireObservation(UUIDPrimaryKeyMixin, Base):
 
     processing_version: Mapped[str | None] = mapped_column(String(32))
     source_product: Mapped[str] = mapped_column(String(32), nullable=False)
-    source_payload: Mapped[dict] = mapped_column(JsonType, nullable=False)
+    #: The raw payload lives once, in raw_observations/raw_payload_blocks. It is
+    #: intentionally not duplicated on the canonical row.
     quality_flags: Mapped[dict] = mapped_column(JsonType, default=dict, nullable=False)
 
     ingested_at: Mapped[datetime] = mapped_column(

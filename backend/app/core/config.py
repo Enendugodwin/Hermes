@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     #: Raw payload retention. Raw rows older than this are removed by the
     #: retention job; the canonical observations and all analysis are kept.
     raw_retention_days: int = 90
+    #: Gzip level for raw-payload archives and payload blocks. 6 is the
+    #: ratio/speed default; 9 is slower but smaller, 1 is fastest.
+    archive_compression_level: int = Field(default=6, ge=1, le=9)
+    #: Raw payloads are compressed in blocks of this many rows (per acquisition
+    #: day and source). Per-row compression is ineffective at ~265 bytes/row.
+    raw_block_rows: int = Field(default=2000, ge=1, le=50_000)
     #: The admin portal only exports payloads older than this, so live ingestion
     #: is never exported mid-flight.
     raw_export_min_age_days: int = 5
@@ -96,6 +102,11 @@ class Settings(BaseSettings):
     firms_base_url: str = "https://firms.modaps.eosdis.nasa.gov/api"
     firms_request_timeout: int = 60
     firms_max_retries: int = 4
+    #: Repeated provider failures open a per-source circuit breaker.
+    firms_circuit_failure_threshold: int = 5
+    firms_circuit_cooldown_seconds: int = 60
+    #: Process-wide request budget for the FIRMS key; 0 disables throttling.
+    firms_requests_per_minute: int = 300
 
     # --- object storage (Phase 2+) -------------------------------------------
     object_storage_endpoint: str | None = None

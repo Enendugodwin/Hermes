@@ -12,9 +12,11 @@ from app.db.models import (
     IngestionPartition,
     IngestionRun,
     RawObservation,
+    RawPayloadBlock,
     SourceAvailability,
 )
 from app.db.session import session_scope
+from app.services import raw_payloads
 from app.services.firms.client import FirmsAuthError
 from app.services.firms.tiles import WORLD, date_windows, global_tiles
 from app.services.ingestion import StaticCsvClient, ingest_csv_text, ingest_range
@@ -42,14 +44,26 @@ def test_ingestion_persists_raw_and_normalized_records() -> None:
     with session_scope() as session:
         assert session.scalar(select(func.count()).select_from(FireObservation)) == 2
         assert session.scalar(select(func.count()).select_from(RawObservation)) == 2
+        # FireSeal Core: the payload lives once, in a compressed block.
+        assert session.scalar(select(func.count()).select_from(RawPayloadBlock)) == 1
 
         row = session.scalars(select(FireObservation)).first()
         assert row is not None
         assert row.sensor == "MODIS"
         assert row.is_synthetic is True
         assert row.source_product == "MODIS_SP"
-        assert row.source_payload["brightness"] == "340.2"
+        assert not hasattr(row, "source_payload")
         assert row.quality_flags["normalizer"] == "normalize-v1"
+
+        raw = session.scalars(
+            select(RawObservation).where(
+                RawObservation.source_record_id == row.source_record_id
+            )
+        ).one()
+        assert raw.payload is None
+        assert raw.block_id is not None and raw.block_row is not None
+        payload = raw_payloads.payload_for(session, raw)
+        assert payload["brightness"] == "340.2"
 
 
 def test_reingestion_does_not_duplicate_records() -> None:

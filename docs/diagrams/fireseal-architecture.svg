@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1120" viewBox="0 0 1680 1120" font-family="Inter, 'Segoe UI', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#4C8DFF"/>
+    </marker>
+    <marker id="arrowFire" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#E08A3C"/>
+    </marker>
+    <marker id="arrowMuted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7D879A"/>
+    </marker>
+  </defs>
+
+  <rect width="1680" height="1120" fill="#0B0E14"/>
+
+  <!-- header -->
+  <text x="56" y="58" fill="#F2F4F8" font-size="30" font-weight="600" letter-spacing="0.4">FireSeal — verifiable storage architecture</text>
+  <text x="56" y="88" fill="#9AA4B2" font-size="15">Two layers, one guarantee: nothing is published, trusted or deleted until its bytes have been read back and re-hashed.</text>
+  <text x="1624" y="58" fill="#4C8DFF" font-size="12" text-anchor="end" letter-spacing="1.6">FIREWATCH X · ARCHIVE INTEGRITY v1</text>
+  <text x="1624" y="84" fill="#7D879A" font-size="12" text-anchor="end" font-family="'JetBrains Mono', Consolas, monospace">firewatch-legacy @ a4d2073</text>
+
+  <!-- ============ BAND 1 ============ -->
+  <rect x="40" y="116" width="1600" height="304" rx="14" fill="#0F141C" stroke="#232A38"/>
+  <text x="66" y="146" fill="#7D879A" font-size="11.5" letter-spacing="1.8">1 · FIRESEAL — FILE ARCHIVE CODEC</text>
+  <text x="440" y="146" fill="#5D6779" font-size="11.5">deterministic gzip (mtime=0) for raw payload exports · Parquet/Zstd for datasets</text>
+
+  <!-- boxes row -->
+  <g>
+    <rect x="66" y="170" width="216" height="86" rx="9" fill="#121826" stroke="#2B3446"/>
+    <text x="82" y="196" fill="#E6E9EF" font-size="13" font-weight="600">Export request</text>
+    <text x="82" y="217" fill="#9AA4B2" font-size="11.5">FIRMS CSV range</text>
+    <text x="82" y="236" fill="#7D879A" font-size="11.5">source rows + manifest scope</text>
+
+    <path d="M282 213 H 310" stroke="#4C8DFF" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <rect x="312" y="170" width="222" height="86" rx="9" fill="#121826" stroke="#2B3446"/>
+    <text x="328" y="196" fill="#E6E9EF" font-size="13" font-weight="600">gzip_writer()</text>
+    <text x="328" y="217" fill="#9AA4B2" font-size="11.5">level 6 · mtime=0 · no name</text>
+    <text x="328" y="236" fill="#7D879A" font-size="11.5">identical input → identical hash</text>
+
+    <path d="M534 213 H 562" stroke="#4C8DFF" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <rect x="564" y="170" width="236" height="86" rx="9" fill="#121826" stroke="#2B3446"/>
+    <text x="580" y="196" fill="#E6E9EF" font-size="13" font-weight="600">Write .part + hash</text>
+    <text x="580" y="217" fill="#9AA4B2" font-size="11.5">streaming SHA-256 of plaintext</text>
+    <text x="580" y="236" fill="#7D879A" font-size="11.5">final path never half-written</text>
+
+    <path d="M800 213 H 828" stroke="#4C8DFF" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <rect x="830" y="170" width="252" height="86" rx="9" fill="#14202F" stroke="#3A6DB8"/>
+    <text x="846" y="196" fill="#9CC0FF" font-size="13" font-weight="600">Read-back verification</text>
+    <text x="846" y="217" fill="#9AA4B2" font-size="11.5">fsync → gunzip in 1 MiB chunks</text>
+    <text x="846" y="236" fill="#9AA4B2" font-size="11.5">compare SHA-256 + byte count</text>
+
+    <path d="M1082 213 H 1110" stroke="#4C8DFF" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <rect x="1112" y="170" width="212" height="86" rx="9" fill="#121826" stroke="#2B3446"/>
+    <text x="1128" y="196" fill="#E6E9EF" font-size="13" font-weight="600">os.replace()</text>
+    <text x="1128" y="217" fill="#9AA4B2" font-size="11.5">atomic publish + dir fsync</text>
+    <text x="1128" y="236" fill="#7D879A" font-size="11.5">one step, no window</text>
+
+    <path d="M1324 213 H 1352" stroke="#4C8DFF" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <rect x="1354" y="170" width="262" height="86" rx="9" fill="#16211A" stroke="#2F6B4A"/>
+    <text x="1370" y="196" fill="#B9E6CC" font-size="13" font-weight="600">Artifact + manifest</text>
+    <text x="1370" y="217" fill="#9AA4B2" font-size="11.5">.csv.gz  &amp;  .csv.gz.manifest.json</text>
+    <text x="1370" y="236" fill="#9AA4B2" font-size="11.5">dual SHA-256 · rows · sizes · level</text>
+  </g>
+
+  <!-- verification failure loop -->
+  <path d="M956 256 V 286 H 700 V 262" fill="none" stroke="#D5523F" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arrowFire)"/>
+  <rect x="716" y="271" width="330" height="30" rx="7" fill="#241416" stroke="#6B2B2B"/>
+  <text x="881" y="291" fill="#F0A9A2" font-size="11.5" text-anchor="middle">hash mismatch → quarantine, never publish</text>
+
+  <!-- mode chips -->
+  <g font-size="11.5" font-family="'JetBrains Mono', Consolas, monospace">
+    <rect x="66" y="330" width="238" height="28" rx="14" fill="#141A25" stroke="#2B3446"/>
+    <text x="82" y="349" fill="#A7B3C4">sha256(uncompressed)</text>
+    <rect x="316" y="330" width="212" height="28" rx="14" fill="#141A25" stroke="#2B3446"/>
+    <text x="332" y="349" fill="#A7B3C4">sha256(compressed)</text>
+    <rect x="540" y="330" width="300" height="28" rx="14" fill="#141A25" stroke="#2B3446"/>
+    <text x="556" y="349" fill="#A7B3C4">Parquet + Zstd: file hash, row count</text>
+    <rect x="852" y="330" width="330" height="28" rx="14" fill="#141A25" stroke="#2B3446"/>
+    <text x="868" y="349" fill="#A7B3C4">integration: raw_exports.codec / verified_at</text>
+  </g>
+
+  <!-- ============ BAND 2 ============ -->
+  <rect x="40" y="444" width="1600" height="330" rx="14" fill="#0F141C" stroke="#232A38"/>
+  <text x="66" y="474" fill="#7D879A" font-size="11.5" letter-spacing="1.8">2 · FIRESEAL CORE — DATABASE PAYLOAD LAYER</text>
+  <text x="500" y="474" fill="#5D6779" font-size="11.5">one gzip block per acquisition day &amp; source (~2,000 rows); rows keep a pointer, not a payload</text>
+
+  <g>
+    <rect x="66" y="498" width="222" height="96" rx="9" fill="#121826" stroke="#2B3446"/>
+    <text x="82" y="524" fill="#E6E9EF" font-size="13" font-weight="600">Ingestion normaliser</text>
+    <text x="82" y="545" fill="#9AA4B2" font-size="11.5">one CSV row → one canonical</text>
+    <text x="82" y="564" fill="#9AA4B2" font-size="11.5">detection + one raw row</text>
+    <text x="82" y="582" fill="#7D879A" font-size="11">content_hash dedup</text>
+
+    <path d="M288 546 H 318" stroke="#4C8DFF" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <rect x="320" y="498" width="300" height="96" rx="9" fill="#121826" stroke="#2B3446"/>
+    <text x="336" y="524" fill="#E6E9EF" font-size="13" font-weight="600">raw_observations</text>
+    <text x="336" y="545" fill="#9AA4B2" font-size="11.5">source_id · source_record_id · content_hash</text>
+    <text x="336" y="564" fill="#9AA4B2" font-size="11.5">acq_date · retrieved_at · block_id · block_row</text>
+    <text x="336" y="582" fill="#7D879A" font-size="11">payload → SQL NULL after compaction</text>
+
+    <path d="M620 546 H 650" stroke="#E08A3C" stroke-width="1.6" marker-end="url(#arrowFire)"/>
+    <text x="617" y="536" fill="#E08A3C" font-size="10.5" font-family="'JetBrains Mono', Consolas, monospace">pointer</text>
+
+    <rect x="652" y="492" width="304" height="108" rx="9" fill="#1D1710" stroke="#7A4A22"/>
+    <text x="668" y="518" fill="#F2C79A" font-size="13" font-weight="600">raw_payload_blocks</text>
+    <text x="668" y="539" fill="#C9B49C" font-size="11.5">gzip(JSONL) · ~2,000 rows per block</text>
+    <text x="668" y="558" fill="#C9B49C" font-size="11.5">compressed + uncompressed SHA-256</text>
+    <text x="668" y="577" fill="#C9B49C" font-size="11.5">rows · sizes · codec · level · acq_date</text>
+    <text x="668" y="594" fill="#9C7C5F" font-size="11">~265 B/row is under TOAST, so batches compress</text>
+
+    <path d="M956 546 H 986" stroke="#4C8DFF" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <rect x="988" y="498" width="268" height="96" rx="9" fill="#121826" stroke="#2B3446"/>
+    <text x="1004" y="524" fill="#E6E9EF" font-size="13" font-weight="600">payload_for() reader</text>
+    <text x="1004" y="545" fill="#9AA4B2" font-size="11.5">16-block LRU per call</text>
+    <text x="1004" y="564" fill="#9AA4B2" font-size="11.5">verify compressed hash → gunzip</text>
+    <text x="1004" y="582" fill="#9AA4B2" font-size="11.5">verify plaintext hash, bytes, row count</text>
+
+    <path d="M1256 546 H 1286" stroke="#4C8DFF" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+    <rect x="1288" y="498" width="328" height="96" rx="9" fill="#121826" stroke="#2B3446"/>
+    <text x="1304" y="524" fill="#E6E9EF" font-size="13" font-weight="600">Consumers</text>
+    <text x="1304" y="545" fill="#9AA4B2" font-size="11.5">raw export · provenance on a detection</text>
+    <text x="1304" y="564" fill="#9AA4B2" font-size="11.5">admin review · archive verification</text>
+    <text x="1304" y="582" fill="#7D879A" font-size="11">canonical analysis never reads blocks</text>
+  </g>
+
+  <rect x="66" y="618" width="430" height="60" rx="8" fill="#111722" stroke="#2B3446"/>
+  <text x="82" y="640" fill="#C7D0DE" font-size="12" font-weight="600">fire_observations (canonical)</text>
+  <text x="82" y="660" fill="#8B96A8" font-size="11.5">source_payload dropped — the raw row is stored once, in a block</text>
+
+  <rect x="516" y="618" width="512" height="60" rx="8" fill="#111722" stroke="#2B3446"/>
+  <text x="532" y="640" fill="#C7D0DE" font-size="12" font-weight="600">Compaction is idempotent</text>
+  <text x="532" y="660" fill="#8B96A8" font-size="11.5">scripts.compress_raw_payloads: payload IS NOT NULL AND block_id IS NULL</text>
+
+  <rect x="1048" y="618" width="568" height="60" rx="8" fill="#111722" stroke="#2B3446"/>
+  <text x="1064" y="640" fill="#C7D0DE" font-size="12" font-weight="600">Measured on live data</text>
+  <text x="1064" y="660" fill="#8B96A8" font-size="11.5">raw payload bytes 2.80 MB → 249 KB (11.3×) · database 30 MB → 24 MB after VACUUM FULL</text>
+  <text x="1064" y="674" fill="#6D7789" font-size="10.5">2,000-row blocks 10.19× vs 1.33× per-row gzip</text>
+
+  <!-- ============ BAND 3 ============ -->
+  <rect x="40" y="800" width="1600" height="212" rx="14" fill="#0F141C" stroke="#232A38"/>
+  <text x="66" y="830" fill="#7D879A" font-size="11.5" letter-spacing="1.8">3 · GATES, VERIFICATION &amp; RETENTION</text>
+
+  <g>
+    <rect x="66" y="850" width="366" height="88" rx="9" fill="#1B1418" stroke="#5E2E36"/>
+    <text x="82" y="876" fill="#F3B4AD" font-size="12.5" font-weight="600">Deletion gate</text>
+    <text x="82" y="897" fill="#B9A3A5" font-size="11.5">delete_export() calls verify_archive() first</text>
+    <text x="82" y="916" fill="#B9A3A5" font-size="11.5">a raw row is only deleted after a passing receipt</text>
+
+    <rect x="452" y="850" width="366" height="88" rx="9" fill="#241416" stroke="#6B2B2B"/>
+    <text x="468" y="876" fill="#F0A9A2" font-size="12.5" font-weight="600">Quarantine</text>
+    <text x="468" y="897" fill="#B9A3A5" font-size="11.5">*.corrupt-&lt;UTC&gt; + JSON report beside it</text>
+    <text x="468" y="916" fill="#B9A3A5" font-size="11.5">failed artifacts are never overwritten or retried blind</text>
+
+    <rect x="838" y="850" width="366" height="88" rx="9" fill="#111722" stroke="#2B3446"/>
+    <text x="854" y="876" fill="#C7D0DE" font-size="12.5" font-weight="600">Scheduled verification</text>
+    <text x="854" y="897" fill="#8B96A8" font-size="11.5">scripts.verify_archives [--quarantine]</text>
+    <text x="854" y="916" fill="#8B96A8" font-size="11.5">scans manifests + Parquet meta · exit 1 on failure</text>
+
+    <rect x="1224" y="850" width="392" height="88" rx="9" fill="#111722" stroke="#2B3446"/>
+    <text x="1240" y="876" fill="#C7D0DE" font-size="12.5" font-weight="600">Retention (90 days)</text>
+    <text x="1240" y="897" fill="#8B96A8" font-size="11.5">preview → run · orphan blocks removed</text>
+    <text x="1240" y="916" fill="#8B96A8" font-size="11.5">policy never touches canonical analysis tables</text>
+  </g>
+
+  <text x="66" y="976" fill="#8B96A8" font-size="12.5">Source of analytical truth is PostgreSQL. A corrupt archive or a broken block can fail a read or block a delete — it can never change a detection, a match or an event.</text>
+  <text x="66" y="1000" fill="#6D7789" font-size="11.5">Config: ARCHIVE_COMPRESSION_LEVEL=6 · RAW_BLOCK_ROWS=2000 · RAW_RETENTION_DAYS=90 · migrations 0017_archive_integrity, 0018_payload_blocks</text>
+
+  <!-- footer -->
+  <line x1="40" y1="1044" x2="1640" y2="1044" stroke="#1C2330"/>
+  <text x="56" y="1072" fill="#5D6779" font-size="11">FireSeal = file codec (integrity.py, raw_archive.py) · FireSeal Core = database payload layer (raw_payloads.py, migrations 0017/0018) · scripts: verify_archives, compress_raw_payloads</text>
+  <text x="1624" y="1072" fill="#4C8DFF" font-size="11" text-anchor="end" letter-spacing="1.2">DOCS/DATA_INTEGRITY.MD</text>
+</svg>

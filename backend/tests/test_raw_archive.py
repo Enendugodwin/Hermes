@@ -1,4 +1,4 @@
-﻿"""Raw-payload export, deletion and retention.
+"""Raw-payload export, deletion and retention.
 
 The analytical contract is simple: deleting a payload must not change a single
 canonical observation. These tests pin that down, plus the checksum gate that
@@ -10,15 +10,22 @@ from __future__ import annotations
 import csv
 import gzip
 import io
+import json
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
 
 from app.core.config import Settings
-from app.db.models import DataSource, FireObservation, RawExport, RawObservation
+from app.db.models import (
+    DataSource,
+    FireObservation,
+    RawExport,
+    RawObservation,
+    RawPayloadBlock,
+)
 from app.db.session import session_scope
-from app.services import raw_archive
+from app.services import integrity, raw_archive, raw_payloads
 
 
 def _settings(tmp_path) -> Settings:
@@ -39,6 +46,7 @@ def _add_raw(session, day: date, count: int, prefix: str = "rec") -> None:
                 source_id=source_id,
                 source_record_id=f"{prefix}-{day.isoformat()}-{index}",
                 content_hash=f"{prefix}{day:%Y%m%d}{index:04d}".ljust(64, "0"),
+                acq_date=day,
                 payload={
                     "latitude": -3.1,
                     "longitude": -60.2,
@@ -64,7 +72,6 @@ def _add_canonical(session, day: date, prefix: str = "canon") -> None:
             longitude=-60.2,
             acquired_at=datetime(day.year, day.month, day.day, 13, 45, tzinfo=UTC),
             source_product="MODIS_SP",
-            source_payload={"acq_date": day.isoformat()},
             quality_flags={},
         )
     )
@@ -81,14 +88,21 @@ def test_export_then_delete_roundtrip(tmp_path) -> None:
         assert inventory["days"][0]["day"] == old_day.isoformat()
         assert inventory["days"][0]["exportable"] is True
 
-        record = raw_archive.create_export(
-            session, settings, start_date=old_day, end_date=old_day
-        )
+        record = raw_archive.create_export(session, settings, start_date=old_day, end_date=old_day)
         assert record.rows == 3
         assert record.size_bytes > 0
         assert len(record.sha256) == 64
+        assert record.codec == "gzip"
+        assert record.compressed_sha256 and len(record.compressed_sha256) == 64
+        assert record.uncompressed_size and record.uncompressed_size > 0
+        assert record.verified_at is not None
         path = raw_archive.export_root(settings) / record.path
         assert path.is_file()
+        manifest = json.loads(
+            path.with_name(path.name + ".manifest.json").read_text(encoding="utf-8")
+        )
+        assert manifest["compressed_sha256"] == record.compressed_sha256
+        assert manifest["uncompressed_sha256"] == record.sha256
 
         with gzip.open(path, "rt", encoding="utf-8", newline="") as handle:
             rows = list(csv.reader(handle))
@@ -99,11 +113,17 @@ def test_export_then_delete_roundtrip(tmp_path) -> None:
 
         with pytest.raises(ValueError, match="checksum"):
             raw_archive.delete_export(
-                session, export_id=record.id, confirm_sha256="0" * 64
+                session,
+                export_id=record.id,
+                confirm_sha256="0" * 64,
+                settings=settings,
             )
 
         result = raw_archive.delete_export(
-            session, export_id=record.id, confirm_sha256=record.sha256
+            session,
+            export_id=record.id,
+            confirm_sha256=record.sha256,
+            settings=settings,
         )
         assert result["rows_deleted"] == 3
 
@@ -114,24 +134,74 @@ def test_export_then_delete_roundtrip(tmp_path) -> None:
         assert stored.rows_deleted == 3
 
 
+def test_delete_refuses_a_corrupt_archive(tmp_path) -> None:
+    day = date(2024, 1, 12)
+    settings = _settings(tmp_path)
+    with session_scope() as session:
+        _add_raw(session, day, 2)
+        record = raw_archive.create_export(session, settings, start_date=day, end_date=day)
+        artifact = raw_archive.export_root(settings) / record.path
+        data = bytearray(artifact.read_bytes())
+        data[-1] ^= 0xFF
+        artifact.write_bytes(data)
+
+        with pytest.raises(ValueError, match="integrity"):
+            raw_archive.delete_export(
+                session,
+                export_id=record.id,
+                confirm_sha256=record.sha256,
+                settings=settings,
+            )
+        assert session.get(RawExport, record.id).status == "ready"
+
+
+def test_export_decompresses_block_storage(tmp_path, loaded_fixture) -> None:
+    settings = _settings(tmp_path)
+    with session_scope() as session:
+        blocks = session.scalar(select(func.count()).select_from(RawPayloadBlock))
+        assert blocks and blocks > 0
+
+        record = raw_archive.create_export(
+            session,
+            settings,
+            start_date=date(2026, 10, 28),
+            end_date=date(2026, 10, 29),
+        )
+        path = raw_archive.export_root(settings) / record.path
+        with gzip.open(path, "rt", encoding="utf-8", newline="") as handle:
+            rows = list(csv.reader(handle))
+        assert len(rows) == record.rows + 1
+        assert "latitude" in rows[1][4]
+
+
+def test_corrupt_payload_block_is_detected(loaded_fixture) -> None:
+    with session_scope() as session:
+        block = session.scalars(select(RawPayloadBlock)).first()
+        assert block is not None
+        block.data = b"\x00" + block.data[1:]
+        block_id = block.id
+
+    with session_scope() as session:
+        block = session.get(RawPayloadBlock, block_id)
+        assert block is not None
+        with pytest.raises(integrity.IntegrityError):
+            raw_payloads.decode_block(block)
+
+
 def test_export_refuses_recent_window(tmp_path) -> None:
     settings = _settings(tmp_path)
     today = datetime.now(UTC).date()
     with session_scope() as session:
         _add_raw(session, today, 1)
         with pytest.raises(ValueError, match="older than"):
-            raw_archive.create_export(
-                session, settings, start_date=today, end_date=today
-            )
+            raw_archive.create_export(session, settings, start_date=today, end_date=today)
 
 
 def test_export_refuses_oversized_span(tmp_path) -> None:
     settings = _settings(tmp_path)
     start = date(2024, 1, 1)
     with session_scope() as session, pytest.raises(ValueError, match="at most"):
-        raw_archive.create_export(
-            session, settings, start_date=start, end_date=date(2024, 6, 1)
-        )
+        raw_archive.create_export(session, settings, start_date=start, end_date=date(2024, 6, 1))
 
 
 def test_delete_refuses_when_rows_changed(tmp_path) -> None:
@@ -139,13 +209,14 @@ def test_delete_refuses_when_rows_changed(tmp_path) -> None:
     settings = _settings(tmp_path)
     with session_scope() as session:
         _add_raw(session, old_day, 2)
-        record = raw_archive.create_export(
-            session, settings, start_date=old_day, end_date=old_day
-        )
+        record = raw_archive.create_export(session, settings, start_date=old_day, end_date=old_day)
         _add_raw(session, old_day, 1, prefix="late")
         with pytest.raises(ValueError, match="changed"):
             raw_archive.delete_export(
-                session, export_id=record.id, confirm_sha256=record.sha256
+                session,
+                export_id=record.id,
+                confirm_sha256=record.sha256,
+                settings=settings,
             )
 
 
@@ -173,8 +244,8 @@ def test_retention_keeps_canonical_observations(tmp_path) -> None:
                 .group_by(raw_archive.acq_date_expr())
             ).all()
         )
-        assert old_day.isoformat() not in per_day
-        assert per_day[fresh_day.isoformat()] == 2
+        assert old_day not in per_day
+        assert per_day[fresh_day] == 2
 
         canonical = session.scalar(
             select(func.count())
@@ -224,4 +295,3 @@ def test_api_inventory_and_export(client, tmp_path) -> None:
 
     required_confirm = client.post("/api/v1/admin/raw/retention", json={})
     assert required_confirm.status_code == 400
-

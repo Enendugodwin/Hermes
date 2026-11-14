@@ -24,11 +24,10 @@ from app.core.errors import AppError
 from app.core.security import require_admin
 from app.db.models import RawExport
 from app.db.session import get_session
+from app.services import integrity
 from app.services import raw_archive as archive
 
-router = APIRouter(
-    prefix="/admin/raw", tags=["admin"], dependencies=[Depends(require_admin)]
-)
+router = APIRouter(prefix="/admin/raw", tags=["admin"], dependencies=[Depends(require_admin)])
 
 
 class ExportRequest(BaseModel):
@@ -53,6 +52,10 @@ def _out(record: RawExport) -> dict[str, Any]:
         "rows": record.rows,
         "size_bytes": record.size_bytes,
         "sha256": record.sha256,
+        "codec": record.codec,
+        "compressed_sha256": record.compressed_sha256,
+        "uncompressed_size": record.uncompressed_size,
+        "verified_at": record.verified_at.isoformat() if record.verified_at else None,
         "status": record.status,
         "created_at": record.created_at.isoformat() if record.created_at else None,
         "deleted_at": record.deleted_at.isoformat() if record.deleted_at else None,
@@ -120,14 +123,36 @@ def download_export(
 def delete_export(
     export_id: uuid.UUID,
     payload: DeleteRequest,
+    settings: Settings = Depends(get_settings),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
     try:
         return archive.delete_export(
-            session, export_id=export_id, confirm_sha256=payload.confirm_sha256
+            session,
+            export_id=export_id,
+            confirm_sha256=payload.confirm_sha256,
+            settings=settings,
         )
     except (ValueError, LookupError) as exc:
         raise _archive_error(exc) from exc
+
+
+@router.get("/exports/{export_id}/verify", summary="Re-verify an export archive")
+def verify_export(
+    export_id: uuid.UUID,
+    settings: Settings = Depends(get_settings),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    record = session.get(RawExport, export_id)
+    if record is None:
+        raise AppError("not_found", "No export with that identifier.")
+    artifact = archive.export_root(settings) / record.path
+    try:
+        return integrity.verify_archive(artifact)
+    except FileNotFoundError as exc:
+        raise AppError("not_found", "The archive file is no longer on disk.") from exc
+    except integrity.IntegrityError as exc:
+        raise AppError("unprocessable", str(exc)) from exc
 
 
 @router.get("/retention/preview", summary="What the retention job would delete")
@@ -151,8 +176,6 @@ def run_retention(
     if not payload.confirm:
         raise AppError("bad_request", "Set confirm=true to delete raw payloads.")
     try:
-        return archive.run_retention(
-            session, settings, days=payload.days, apply=True
-        )
+        return archive.run_retention(session, settings, days=payload.days, apply=True)
     except ValueError as exc:
         raise _archive_error(exc) from exc

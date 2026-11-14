@@ -1,4 +1,4 @@
-﻿"""ORM models."""
+"""ORM models."""
 
 from app.db.models.app_setting import AppSetting
 from app.db.models.auth import AuthSession, User
@@ -16,6 +16,7 @@ from app.db.models.ingestion import (
     IngestionPartition,
     IngestionRun,
     RawObservation,
+    RawPayloadBlock,
     SourceAvailability,
 )
 from app.db.models.observation import FireObservation
@@ -42,6 +43,7 @@ __all__ = [
     "ObservationMatch",
     "RawExport",
     "RawObservation",
+    "RawPayloadBlock",
     "RegionalCellStatistic",
     "RegionalDailyStatistic",
     "SourceAvailability",

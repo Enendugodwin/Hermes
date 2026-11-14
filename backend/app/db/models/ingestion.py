@@ -12,6 +12,8 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -68,6 +70,31 @@ class IngestionPartition(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
 
+class RawPayloadBlock(UUIDPrimaryKeyMixin, Base):
+    """Batch-compressed JSONL payloads for one acquisition day.
+
+    Individual FIRMS rows are ~265 bytes; per-row compression is ~1.3x, while a
+    2,000-row block is ~10x. Blocks keep the database small; the row table keeps
+    only the indexed lookup columns and a ``(block_id, block_row)`` pointer.
+    """
+
+    __tablename__ = "raw_payload_blocks"
+
+    source_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("data_sources.id"))
+    acq_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    codec: Mapped[str] = mapped_column(String(16), nullable=False, default="gzip")
+    compression_level: Mapped[int] = mapped_column(Integer, nullable=False, default=6)
+    rows: Mapped[int] = mapped_column(Integer, nullable=False)
+    uncompressed_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    compressed_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    uncompressed_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    compressed_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class RawObservation(UUIDPrimaryKeyMixin, Base):
     """Immutable source payload, retained for provenance and reproducibility."""
 
@@ -79,7 +106,14 @@ class RawObservation(UUIDPrimaryKeyMixin, Base):
     source_id: Mapped[uuid.UUID] = mapped_column(GUID(), ForeignKey("data_sources.id"))
     source_record_id: Mapped[str] = mapped_column(String(64), nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    payload: Mapped[dict] = mapped_column(JsonType, nullable=False)
+    #: Legacy inline payload (rows ingested before block compression). New rows
+    #: point at ``block_id``/``block_row`` instead.
+    payload: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
+    acq_date: Mapped[date | None] = mapped_column(Date, index=True)
+    block_id: Mapped[uuid.UUID | None] = mapped_column(
+        GUID(), ForeignKey("raw_payload_blocks.id", ondelete="SET NULL")
+    )
+    block_row: Mapped[int | None] = mapped_column(Integer)
     retrieved_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

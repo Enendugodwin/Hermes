@@ -23,7 +23,13 @@ class RawExport(UUIDPrimaryKeyMixin, Base):
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     rows: Mapped[int] = mapped_column(Integer, nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    #: SHA-256 of the uncompressed CSV: the logical content identity.
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    #: Compressed artifact identity, added by the integrity codec.
+    codec: Mapped[str] = mapped_column(String(16), nullable=False, default="gzip")
+    compressed_sha256: Mapped[str | None] = mapped_column(String(64))
+    uncompressed_size: Mapped[int | None] = mapped_column(BigInteger)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     #: Path relative to the raw-export root, never user supplied.
     path: Mapped[str] = mapped_column(String(512), nullable=False)
     #: ready | deleted
