@@ -1,0 +1,218 @@
+# Operations
+
+Everything the platform needs on one workstation: database, storage growth, backups and the
+GitHub hand-off.
+
+## Database
+
+The API runs on **PostgreSQL 16**; SQLite remains the zero-setup option for tests and CI
+(`DATABASE_URL` unset). Both dialects are exercised: migrations are dialect-aware and the
+analytical queries isolate their two real differences (integer casting and UTC day bucketing)
+in `app/db/dialect.py`.
+
+### Local PostgreSQL (Windows, no admin rights)
+
+The EDB "binaries" zip runs without installation or a service:
+
+```powershell
+# once: unpack the EDB binaries zip
+#   https://get.enterprisedb.com/postgresql/postgresql-16.4-1-windows-x64-binaries.zip
+#   -> C:\Users\<you>\pgsql\pgsql
+
+powershell -ExecutionPolicy Bypass -File backend\scripts\start_postgres.ps1
+# stop with backend\scripts\stop_postgres.ps1
+```
+
+The script initialises `~\pgsql\data` on port **5433** with a `trust` rule bound to
+`127.0.0.1` and creates the `firewatch` role. Then:
+
+```powershell
+createdb -h 127.0.0.1 -p 5433 -U firewatch firewatch
+cd backend
+$env:DATABASE_URL = "postgresql+psycopg://firewatch@127.0.0.1:5433/firewatch"
+.venv\Scripts\python.exe -m alembic upgrade head
+.venv\Scripts\python.exe -m scripts.copy_to_postgres `
+    --source "sqlite+pysqlite:///./firewatch.db" `
+    --target $env:DATABASE_URL
+```
+
+Set the same `DATABASE_URL` in `.env` and restart the API. `system/status` then reports
+`database.dialect = postgresql`.
+
+Notes:
+
+- PostGIS is optional. The foundation migration creates the extension only when the server
+  offers it, and the capability report keeps saying "not built" otherwise.
+- The local cluster is a normal user process: it does not survive a reboot. Run the start
+  script (or register it as a scheduled task) before starting the API.
+- Start it with `postgres.exe` (the script does this), not `pg_ctl`. On this host a
+  `pg_ctl`-started postmaster had child processes die with `0xC0000142`
+  (`STATUS_DLL_INIT_FAILED`) under load; the directly launched server has run for hours.
+- `migrations/0005` adds a covering index on `(UTC day, sensor, confidence, daynight,
+  satellite, source_code) INCLUDE (frp_mw)` for PostgreSQL. Analytics, the calendar, the
+  anomaly engine and reports all aggregate by day, and on ~9 M rows that index turns a
+  ~15 s heap scan into an index-only scan.
+- SQLite connections now use WAL and a 30 s busy timeout, which removes the "database is
+  locked" failures seen when the UI polled during a bulk ingestion. On PostgreSQL the
+  problem does not exist.
+
+## Start and stop
+
+From the repository root:
+
+```bat
+start.bat     :: PostgreSQL (if needed), API on 8200, web on 5273
+stop.bat      :: stops web, API and PostgreSQL
+stop.bat -KeepDatabase
+```
+
+Both are thin wrappers around `scripts\start_stack.ps1` and
+`scripts\stop_stack.ps1`. The start script waits for `/ready` and the web root
+before returning, writes pid files and logs under `logs\`, and launches the
+servers through WMI so they are not children of the console that started them —
+a console child kept `cmd.exe` waiting until the server exited.
+
+## Backfilling more than five days
+
+The API caps one request at five days, so a long backfill is a resumable loop of
+five-day partitions:
+
+```powershell
+cd backend
+.venv\Scripts\python.exe -m scripts.backfill --start 2026-09-02 --end 2026-10-31
+# live progress bar, derived from completed partitions
+.venv\Scripts\python.exe -m scripts.backfill_status --start 2026-09-02 `
+    --end 2026-10-31 --watch
+```
+
+`backfill` prints one line per (source, window) with rows inserted and an ETA, and
+skips partitions that already succeeded. `backfill_status` shows the same view as
+a progress bar and is safe to run while the backfill is working.
+
+## Aggregation rollups
+
+Eleven million detections cannot be grouped by day on every page load. PostgreSQL keeps two
+materialized views, refreshed after each ingestion:
+
+| Matview | Grain | Serves |
+| --- | --- | --- |
+| `daily_activity` | UTC day × sensor × confidence × day/night × satellite × product | calendar, analytics series, anomaly engine, reports |
+| `cell_activity` | UTC day × 2° cell | analytics ranking |
+
+`app/services/rollups.py` chooses the rollup only when the request can be answered from it;
+a `bbox` or a per-detection `min_frp` falls back to the live scan so a filtered answer is never
+approximated. Measured on 11.3 M rows: analytics 26 s → **0.24 s**, calendar 9.8 s → **0.05 s**,
+anomalies 13 s → **0.05 s**, report 34 s → **0.17 s**.
+
+## Storage growth
+
+Measured on this workstation: **371,276 detections** occupy **588 MB** in PostgreSQL
+(1,660 bytes per detection, indexes and raw payloads included) and 642 MB in SQLite.
+
+At a full near-real-time day (MODIS + VIIRS Suomi-NPP + NOAA-20 + NOAA-21, ≈142,000
+detections/day):
+
+| Horizon | Detections | PostgreSQL |
+| --- | --- | --- |
+| 1 day | ~142,000 | ~0.24 GB |
+| 7 days | ~1.0 M | ~1.7 GB |
+| 30 days | ~4.3 M | **~7.1 GB** |
+| 90 days | ~12.8 M | ~21 GB |
+
+At the observed 5-day average (≈74,000 detections/day, three products) 30 days is ≈3.7 GB.
+Add roughly 1 GB of transient WAL during a large ingestion (PostgreSQL checkpoints release
+it). Most of the footprint is provenance: `fire_observations` 341 MB and `raw_observations`
+232 MB for the same rows. Dropping the raw payload archive would cut about 40%.
+
+## Backups
+
+```powershell
+# logical backup (schema + data)
+& "$env:USERPROFILE\pgsql\pgsql\bin\pg_dump.exe" -h 127.0.0.1 -p 5433 -U firewatch `
+    -Fc firewatch > firewatch-$(Get-Date -Format yyyyMMdd).dump
+
+# restore
+& "$env:USERPROFILE\pgsql\pgsql\bin\pg_restore.exe" -h 127.0.0.1 -p 5433 -U firewatch `
+    -d firewatch --clean --if-exists firewatch-20261101.dump
+```
+
+## Deployment
+
+`docker-compose.yml` runs PostgreSQL (PostGIS image), Redis, the API, a Celery worker and the web
+build. The API has an HTTP healthcheck against `/ready` (database reachability) and the web service
+probes itself; both are gated behind `service_healthy` dependencies.
+
+Without Docker, run the API and the Vite/dev server directly (see the quick start) and point
+`DATABASE_URL` at PostgreSQL as described above. `/health` is liveness, `/ready` is readiness, and
+`/api/v1/system/status` reports phase, dialect and data freshness.
+
+## Raw payload retention and the admin portal
+
+Raw payloads are provenance, not analysis. `raw_observations` can be pruned
+without touching `fire_observations`, `observation_matches`, events or rollups —
+every screen keeps the same numbers.
+
+- **Policy:** keep 90 days (`RAW_RETENTION_DAYS`). Apply from the admin portal
+  (`/admin` → *Run retention now*) or on a schedule:
+
+  ```powershell
+  cd backend
+  $env:PYTHONPATH = "."
+  .venv\Scripts\python.exe -m scripts.retention            # dry run
+  .venv\Scripts\python.exe -m scripts.retention --apply
+  .venv\Scripts\python.exe -m scripts.retention --apply --vacuum
+  ```
+
+  `--vacuum` runs `VACUUM (FULL, ANALYZE) raw_observations` and returns the disk
+  space; it needs an exclusive lock and sets `statement_timeout = 0` for the
+  session.
+
+- **Export before delete:** the portal exports a bounded range (≤ 62 days,
+  payloads older than 5 days) as `CSV.GZ`, with a SHA-256 over the uncompressed
+  CSV. Deleting that range requires the checksum and refuses if the row count
+  changed since the export. The archive is the operator's copy.
+- **What was deleted on 2026-11-04:** 240,953 payload rows older than
+  2026-08-06 (2019-12 fixture, 2024-12 fixture, 2026-08-01→05), then
+  `VACUUM FULL`; raw rows **11,946,746 → 11,705,793**, relation **7,664 MB →
+  6,933 MB**, canonical observations unchanged at **11,944,746**.
+
+- **FIRMS key:** save/rotate it in the admin portal. It is stored in
+  `app_settings`, applied immediately and reloaded at startup; reads return only
+  a masked fingerprint. The environment value remains the fallback when no key
+  is stored. `POST /api/v1/admin/settings/firms/test` asks FIRMS whether the
+  active key works.
+
+## Security posture
+
+- Structured security headers on every response; API responses are `no-store`.
+- Optional per-client rate limiting (`RATE_LIMIT_PER_MINUTE`, off by default) returning `429` with
+  `Retry-After` and `X-RateLimit-*` headers.
+- `CORS_ORIGINS` is an explicit allow-list; the browser never holds the FIRMS key.
+- The web GUI has no authentication of its own: bind it to localhost or put it behind an
+  authenticating proxy before exposing it. **This now includes the admin portal**, which can
+  rotate the FIRMS key and delete raw payloads.
+
+## Pushing to GitHub
+
+The repository has no remote yet. Create the GitHub repo (empty, no README), then:
+
+```powershell
+cd C:\Users\user\NASA
+git remote add origin git@github.com:<account>/<repo>.git
+git branch -M main
+git push -u origin main
+```
+
+The SSH key `~/.ssh/id_ed25519_github` authenticates as **Enendugodwin**. A deploy key is
+scoped to a single repository, so either add that public key as a deploy key with write
+access on the new repo, or use an account key.
+
+Before the first push, confirm nothing sensitive is staged:
+
+```powershell
+git status --short
+git ls-files | Select-String -Pattern '\.env$|\.db$|\.dump$'
+```
+
+`.gitignore` already excludes `.env*` (except `.env.example`), databases, logs, artifacts,
+`node_modules/` and `frontend/dist/`.

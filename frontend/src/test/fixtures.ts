@@ -1,0 +1,1150 @@
+import { vi } from "vitest";
+
+import type {
+  DashboardOverview,
+  FireEventOut,
+  HarmonizationSummary,
+  MatchPage,
+  ModuleStatusItem,
+  Observation,
+  ObservationPage,
+  SourceOut,
+  SourceHealth,
+  SystemStatus,
+} from "@/types/api";
+import type { AggregateResponse } from "@/lib/mapApi";
+import type { CalendarResponse, CalendarDrilldown, CalendarIntelligence } from "@/lib/calendarApi";
+import type { AnalyticsResponse, AnomaliesResponse } from "@/lib/analyticsApi";
+
+export const MODULES: ModuleStatusItem[] = [
+  {
+    key: "overview",
+    label: "Overview",
+    route: "/",
+    phase: "Phase 4",
+    status: "in_progress",
+    summary: "Global fire activity and intelligence summary.",
+    planned: ["Detections split by sensor", "Daily detection trend"],
+  },
+  {
+    key: "harmonization",
+    label: "Sensor Intelligence",
+    route: "/harmonization",
+    phase: "Phase 3",
+    status: "ready",
+    summary: "MODIS/VIIRS normalization, matching and quality control.",
+    planned: ["Cross-sensor association scores with full evidence"],
+  },
+  {
+    key: "calendar",
+    label: "Burning Calendar",
+    route: "/calendar",
+    phase: "Phase 5",
+    status: "scaffolded",
+    summary: "Historical burning activity by day, month and year.",
+    planned: ["Daily / weekly / monthly / annual views"],
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    route: "/settings",
+    phase: "Phase 1",
+    status: "in_progress",
+    summary: "System health, data sources and administration.",
+    planned: ["Data source registry and freshness"],
+  },
+];
+
+export function makeStatus(overrides: Partial<SystemStatus["data"]> = {}): SystemStatus {
+  return {
+    app_name: "FIREWATCH X",
+    app_version: "0.1.0",
+    environment: "test",
+    phase: "3",
+    phase_name: "Harmonization",
+    server_time: "2026-10-30T00:00:00Z",
+    uptime_seconds: 42,
+    database: { dialect: "sqlite", connected: true, postgis: null, latency_ms: 1.2, error: null },
+    data: {
+      freshness: "no_data",
+      freshness_reason:
+        "FIRMS_MAP_KEY is not configured, so no NASA observations can be retrieved.",
+      firms_configured: false,
+      sources_registered: 8,
+      observations_stored: 0,
+      synthetic_observations: 0,
+      missing_dates: 0,
+      last_ingested_at: null,
+      last_observation_at: null,
+      ...overrides,
+    },
+    capabilities: {
+      authentication: true,
+      rate_limiting: true,
+      ai_assistant: true,
+      reports: true,
+      ingestion: false,
+      spatial: false,
+    },
+    modules: MODULES,
+  };
+}
+
+export const SOURCES: SourceOut[] = [
+  {
+    code: "MODIS_SP",
+    sensor: "MODIS",
+    satellite: "Terra/Aqua",
+    processing_level: "SP",
+    description: "MODIS standard processing.",
+    status: "not_ingested",
+    observations: 0,
+    last_observation_at: null,
+  },
+  {
+    code: "VIIRS_SNPP_NRT",
+    sensor: "VIIRS",
+    satellite: "Suomi-NPP",
+    processing_level: "NRT",
+    description: "VIIRS near-real-time.",
+    status: "ok",
+    observations: 241992,
+    last_observation_at: "2026-10-31T21:10:00Z",
+  },
+];
+
+export const SOURCE_HEALTH: SourceHealth[] = [
+  {
+    code: "MODIS_SP",
+    sensor: "MODIS",
+    satellite: "Terra/Aqua",
+    processing_level: "SP",
+    registered: true,
+    observations: 0,
+    last_run_status: null,
+    last_run_at: null,
+    last_error: null,
+  },
+  {
+    code: "VIIRS_SNPP_NRT",
+    sensor: "VIIRS",
+    satellite: "Suomi-NPP",
+    processing_level: "NRT",
+    registered: true,
+    observations: 241992,
+    last_run_status: "succeeded",
+    last_run_at: "2026-10-31T21:10:00Z",
+    last_error: null,
+  },
+];
+
+export const EMPTY_DASHBOARD: DashboardOverview = {
+  period: { start_date: null, end_date: null },
+  detections: { total: 0, modis: 0, viirs: 0, frp_mw: 0 },
+  matches: { total: 0, probable: 0, possible: 0 },
+  events: 0,
+  scope: null,
+  data: makeStatus().data,
+  note: "Counts are satellite thermal detections, not the number of fires.",
+};
+
+export const EMPTY_SUMMARY: HarmonizationSummary = {
+  observations: 0,
+  modis_observations: 0,
+  viirs_observations: 0,
+  synthetic_observations: 0,
+  matches_total: 0,
+  matches_probable: 0,
+  matches_possible: 0,
+  matches_rejected: 0,
+  events: 0,
+  multi_sensor_events: 0,
+  last_run_at: null,
+  last_run_status: null,
+  parameters: {},
+  last_run_scope: null,
+  algorithm_version: "assoc-v1",
+};
+
+export const FIXTURE_SUMMARY: HarmonizationSummary = {
+  ...EMPTY_SUMMARY,
+  observations: 9,
+  modis_observations: 5,
+  viirs_observations: 4,
+  synthetic_observations: 9,
+  matches_total: 5,
+  matches_probable: 1,
+  matches_possible: 2,
+  matches_rejected: 2,
+  events: 2,
+  multi_sensor_events: 2,
+  last_run_at: "2026-10-30T12:00:00Z",
+  last_run_status: "succeeded",
+  last_run_scope: { bbox: [2.5, 4, 14.7, 13.9], start_date: "2026-10-29", end_date: "2026-10-30" },
+};
+
+export const MATCHES: MatchPage = {
+  total: 1,
+  limit: 50,
+  offset: 0,
+  items: [
+    {
+      id: "match-1",
+      observation_a: {
+        id: "obs-a",
+        source_code: "MODIS_SP",
+        sensor: "MODIS",
+        satellite: "Terra",
+        latitude: 8.5,
+        longitude: 9.1,
+        acquired_at: "2026-10-28T10:20:00Z",
+        confidence_category: "high",
+        frp_mw: 12.4,
+      },
+      observation_b: {
+        id: "obs-b",
+        source_code: "VIIRS_SNPP_SP",
+        sensor: "VIIRS",
+        satellite: "Suomi-NPP",
+        latitude: 8.503,
+        longitude: 9.104,
+        acquired_at: "2026-10-28T10:35:00Z",
+        confidence_category: "high",
+        frp_mw: 9.8,
+      },
+      temporal_delta_seconds: 900,
+      spatial_distance_m: 420.5,
+      footprint_overlap: 0.72,
+      association_score: 0.912,
+      match_status: "probable",
+      components: {
+        temporal_similarity: 0.9167,
+        spatial_proximity: 0.7897,
+        footprint_overlap: 0.72,
+        weights: { temporal: 0.4, spatial: 0.45, footprint: 0.15 },
+        weight_note: "weights renormalised over available components",
+      },
+      algorithm_version: "assoc-v1",
+      created_at: "2026-10-30T12:00:00Z",
+    },
+  ],
+};
+
+export const EVENTS: FireEventOut[] = [
+  {
+    id: "event-1",
+    first_detected_at: "2026-10-28T10:20:00Z",
+    last_detected_at: "2026-10-28T11:25:00Z",
+    centroid_latitude: 8.5033,
+    centroid_longitude: 9.0985,
+    min_latitude: 8.498,
+    max_latitude: 8.512,
+    min_longitude: 9.093,
+    max_longitude: 9.104,
+    observation_count: 4,
+    sensor_count: 2,
+    maximum_frp_mw: 12.4,
+    aggregate_frp_mw: 35.6,
+    clustering_method: "dbscan_spatiotemporal",
+    clustering_parameters: { eps_meters: 1500, eps_hours: 24, min_samples: 2 },
+    methodology_version: "events-v1",
+  },
+];
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export interface MockMap {
+  cells: AggregateResponse;
+  observation: Observation;
+}
+
+export interface MockQuery {
+  observations: ObservationPage;
+}
+
+export interface MockCalendar {
+  calendar: CalendarResponse;
+  drilldown: CalendarDrilldown;
+}
+
+export interface MockOptions {
+  status?: SystemStatus;
+  summary?: HarmonizationSummary;
+  matches?: MatchPage;
+  events?: FireEventOut[];
+  dashboard?: DashboardOverview;
+  map?: MockMap;
+  calendar?: MockCalendar;
+  intelligence?: CalendarIntelligence;
+  query?: MockQuery;
+  analytics?: AnalyticsResponse;
+  anomalies?: AnomaliesResponse;
+}
+
+const EMPTY_GEOMETRY = {
+  type: "FeatureCollection" as const,
+  features: [],
+  properties: { returned: 0, total: 0, truncated: false, limit: 5000 },
+};
+
+const EMPTY_CELLS: AggregateResponse = {
+  cells: [],
+  cell_degrees: 11.25,
+  zoom: 2,
+  total_detections: 0,
+  returned_cells: 0,
+  truncated: false,
+  bbox: [-180, -85, 180, 85],
+};
+
+const EMPTY_CALENDAR: CalendarResponse = {
+  granularity: "day",
+  start_date: "2026-10-29",
+  end_date: "2026-10-31",
+  buckets: [],
+  totals: {
+    detections: 0,
+    modis: 0,
+    viirs: 0,
+    frp_sum_mw: 0,
+    frp_max_mw: null,
+    high_confidence: 0,
+    active_buckets: 0,
+    quiet_buckets: 0,
+    unobserved_buckets: 0,
+    buckets: 0,
+  },
+  notes: ["Each bucket counts thermal detections, not fires."],
+};
+
+const EMPTY_DRILLDOWN: CalendarDrilldown = {
+  bucket: {
+    start: "2026-10-30",
+    end: "2026-10-30",
+    label: "2026-10-30",
+    state: "active",
+    coverage: { observed: 1, empty: 0, missing: 0, unknown: 0 },
+    detections: 0,
+    modis: 0,
+    viirs: 0,
+    frp_sum_mw: 0,
+    frp_max_mw: null,
+    high_confidence: 0,
+  },
+  total: 0,
+  returned: 0,
+  limit: 200,
+  items: [],
+};
+
+const CALENDAR_INTELLIGENCE_VALUES = [100, 105, null, 110, 115, 120, 125, 130, 135, 140, null, 200];
+const CALENDAR_INTELLIGENCE_TRAILING = [
+  100, 102.5, null, 105, 107.5, 110, 112.5, 115, 117.5, 120, null, 155.5,
+];
+
+export const CALENDAR_INTELLIGENCE: CalendarIntelligence = {
+  status: "ok",
+  method: { name: "calendar-intelligence", version: "calendar-intel-v1" },
+  window: {
+    start: "2026-10-18",
+    end: "2026-10-29",
+    days: 12,
+    observed_days: 10,
+    missing_days: 2,
+    coverage: 0.8333,
+    metric: "detections",
+    history_start: "2022-01-01",
+  },
+  trend: {
+    status: "ok",
+    method: "theil-sen",
+    version: "calendar-intel-v1",
+    metric: "detections",
+    observations: 10,
+    slope_per_day: 8.2,
+    slope_per_30_days: 246,
+    direction: "rising",
+    change_ratio: 1.6,
+    confidence: "medium",
+    coverage: 0.8333,
+    level_median: 120,
+    flat_band_per_30_days: 6,
+    requirements: { needed_observations: 10, available_observations: 10, note: "Requirement satisfied." },
+    series: CALENDAR_INTELLIGENCE_VALUES.map((value, index) => ({
+      date: `2026-10-${String(18 + index).padStart(2, "0")}`,
+      value,
+      observed: value !== null,
+      trailing_mean: CALENDAR_INTELLIGENCE_TRAILING[index] ?? null,
+      severity:
+        value === null ? "unobserved" : value === 200 ? "high" : "normal",
+    })),
+  },
+  anomalies: {
+    status: "ok",
+    method: { name: "robust_z", version: "anomaly-robust-z-v1" },
+    baseline: { days: 30, median: 110, mad: 12, scale: 17.8 },
+    count: 1,
+    items: [
+      {
+        date: "2026-10-29",
+        observed: 200,
+        expected: 120,
+        deviation: 80,
+        robust_z: 4.5,
+        severity: "high",
+        explanation: "2026-10-29: 200 detections against a baseline median of 120.0.",
+      },
+    ],
+    evaluated_days: 12,
+    requirements: { note: "Requirement satisfied." },
+  },
+  seasonality: {
+    status: "single_year",
+    method: "monthly-climatology",
+    version: "calendar-intel-v1",
+    metric: "detections",
+    years: [2026],
+    years_requested: 5,
+    first_year: 2022,
+    last_year: 2026,
+    months: [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ].map((label, index) => ({
+      month: index + 1,
+      label,
+      mean: index === 9 ? 140 : null,
+      years: index === 9 ? 1 : 0,
+      sufficient: false,
+      index: null,
+    })),
+    baseline_mean: null,
+    sufficient_months: 0,
+    required_months: 9,
+    peak_month: null,
+    trough_month: null,
+    seasonal_amplitude: null,
+    requirements: {
+      needed_years: 2,
+      available_years: 1,
+      needed_days_per_month_year: 5,
+      note: "Only one year of history is available. The monthly profile describes that year; it is not a seasonal climatology and no seasonal index, peak or trough is claimed.",
+    },
+  },
+  notes: [
+    "Counts are detections, not fires.",
+    "Missing days are excluded from the trend and the seasonal profile; they are never zero.",
+    "Trends use a Theil–Sen slope, which resists a single extreme day.",
+  ],
+};
+
+const EMPTY_ANALYTICS: AnalyticsResponse = {  start_date: "2026-10-29",
+  end_date: "2026-10-31",
+  totals: {
+    detections: 0,
+    modis: 0,
+    viirs: 0,
+    frp_sum_mw: 0,
+    frp_max_mw: null,
+    high_confidence: 0,
+    active_days: 0,
+    days: 3,
+    mean_daily_detections: 0,
+  },
+  series: [],
+  top_cells: [],
+  cell_degrees: 2,
+  peaks: { detections: { date: null, detections: 0 }, frp: { date: null, frp_mw: null } },
+  confidence: { high: 0, nominal: 0, low: 0, unknown: 0 },
+  daynight: { D: 0, N: 0, unknown: 0 },
+  satellites: [],
+  products: [],
+  synthetic_detections: 0,
+  notes: ["Counts are thermal detections, not fires."],
+};
+
+const INSUFFICIENT_ANOMALIES: AnomaliesResponse = {
+  status: "insufficient_history",
+  method: {
+    name: "robust_z",
+    version: "anomaly-robust-z-v1",
+    baseline_days: 30,
+    min_baseline_days: 14,
+    z_threshold: 3,
+    metric: "detections",
+    mad_to_sigma: 1.4826,
+    comparison: "preceding observed days, gaps excluded",
+    baseline_source: "preceding",
+    min_window_days: 4,
+  },
+  baseline: null,
+  points: [],
+  anomalies: [],
+  evaluated_days: 0,
+  observed_baseline_days: 0,
+  requirements: {
+    needed_days: 14,
+    available_days: 0,
+    note: "Ingest more history for this scope; the engine will not score anomalies without a baseline.",
+  },
+  notes: ["Days without recorded source availability are excluded, not treated as zero."],
+};
+
+const PLACE_RESULTS = {
+  query: "nigeria",
+  count: 1,
+  results: [
+    {
+      name: "Nigeria",
+      kind: "country",
+      latitude: 9.08,
+      longitude: 8.68,
+      iso: "NG",
+      zoom: 6,
+    },
+  ],
+  note: "Approximate centroids for map navigation.",
+};
+
+/** Install a fetch mock covering every endpoint the shell and pages use. */
+export function installFetchMock(options: MockOptions = {}) {
+  const status = options.status ?? makeStatus();
+  const summary = options.summary ?? EMPTY_SUMMARY;
+  const matches = options.matches ?? { items: [], total: 0, limit: 50, offset: 0 };
+  const events = options.events ?? [];
+  const dashboard = options.dashboard ?? EMPTY_DASHBOARD;
+  const mapCells = options.map?.cells ?? EMPTY_CELLS;
+  const mapObservation = options.map?.observation;
+  const calendar = options.calendar?.calendar ?? EMPTY_CALENDAR;
+  const analytics = options.analytics ?? EMPTY_ANALYTICS;
+  const anomalies = options.anomalies ?? INSUFFICIENT_ANOMALIES;
+  const observations: ObservationPage =
+    options.query?.observations ?? { items: [], total: 0, limit: 200, offset: 0 };
+  const calendarDrilldown = options.calendar?.drilldown ?? EMPTY_DRILLDOWN;
+  const intelligence = options.intelligence ?? CALENDAR_INTELLIGENCE;
+
+  let firmsConfigured = false;
+  const mock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes("/api/v1/reports/summary")) {
+      return json({
+        version: "report-v1",
+        start_date: "2026-10-30",
+        end_date: "2026-10-31",
+        headline: {
+          detections: 420,
+          active_days: 1,
+          days: 2,
+          frp_sum_mw: 52.4,
+          frp_max_mw: 52.4,
+          high_confidence: 12,
+          modis: 41,
+          viirs: 379,
+        },
+        series: [
+          { date: "2026-10-30", detections: 420, frp_sum_mw: 52.4 },
+          { date: "2026-10-31", detections: 0, frp_sum_mw: 0 },
+        ],
+        top_cells: [{ latitude: 8.7, longitude: 9.1, detections: 420 }],
+        harmonization: {
+          matches_total: 12,
+          probable: 8,
+          events: 4,
+          multi_sensor_events: 2,
+          note: "scoped",
+        },
+        anomalies: { status: "insufficient_history", flagged: [], method: "robust_z", baseline_source: "preceding" },
+        coverage: { days_with_detections: 1, range_days: 2, synthetic_rows: 0 },
+        notes: ["Counts are thermal detections, not confirmed fires."],
+      });
+    }
+    if (url.includes("/api/v1/regions/catalog")) {
+      return json({
+        regions: [
+          {
+            id: "region-ng",
+            slug: "country-ng",
+            name: "Nigeria",
+            level: "country",
+            boundary_kind: "bbox",
+            bbox: [2.68, 3.08, 14.68, 15.08],
+            area_km2: 1_750_298,
+            vertices: 5,
+            boundary_version: "gazetteer-v1",
+            source: "gazetteer",
+            is_approximate: true,
+            notes: "Approximate centroid box.",
+            last_analyzed_at: "2026-11-01T00:00:00Z",
+            last_analysis_algorithm: "regional-stats-v1",
+            grid_degrees: 0.5,
+          },
+        ],
+        total: 1,
+        note: "Gazetteer regions are approximate boxes.",
+      });
+    }
+    if (url.includes("/api/v1/regions/") && url.includes("/analyze")) {
+      return json({
+        status: "ok",
+        region_id: "region-ng",
+        window: { start: "2026-09-02", end: "2026-11-01" },
+        sensors: ["MODIS", "VIIRS"],
+        synthetic: false,
+        scanned_candidates: 68643,
+        detections_in_region: 68642,
+        days_covered: 61,
+        days_requested: 61,
+        rows_written: 183,
+        cells: 385,
+        algorithm_version: "regional-stats-v1",
+        notes: ["Counts are detections, not fires."],
+      });
+    }
+    if (url.includes("/api/v1/regions/") && url.includes("/overview")) {
+      return json({
+        status: "ok",
+        region: { id: "region-ng", name: "Nigeria", level: "country" },
+        window: { start: "2026-09-02", end: "2026-11-01", sensor: "ALL" },
+        totals: {
+          detections: 68642,
+          frp_sum_mw: 48211.3,
+          frp_max_mw: 421.5,
+          high_confidence: 12054,
+          active_days: 61,
+          covered_days: 61,
+          requested_days: 61,
+          coverage: 1,
+        },
+        peak_month: { month: 10, mean_detections: 1200.5, years: 1 },
+        trend: {
+          status: "insufficient_years",
+          direction: "unknown",
+          p_value: null,
+          sen_slope_per_year: null,
+          complete_years: 0,
+          note: "A significance test needs 8 complete years.",
+        },
+        anomalies: { status: "insufficient_history", count: 0, evaluated_months: 0 },
+        current_month: {
+          year: 2026,
+          month: 10,
+          observed: 4100,
+          median: 3000,
+          deviation_ratio: 0.3667,
+          baseline_years: 3,
+          status: "ok",
+          coverage: 1,
+          note: "Compared with the median of 3 prior years for this month.",
+        },
+        sensor_note: "Combined detections are never assumed interchangeable.",
+        notes: ["Counts are detections, not fires."],
+      });
+    }
+    if (url.includes("/api/v1/regions/") && url.includes("/monthly")) {
+      return json({
+        status: "ok",
+        region: { id: "region-ng", name: "Nigeria" },
+        window: { start: "2026-09-02", end: "2026-11-01", sensor: "ALL" },
+        months: [
+          { year: 2026, month: 9, detections: 1200, frp_sum_mw: 900, frp_max_mw: 100, high_confidence: 200, covered_days: 29, active_days: 29, days_in_month: 30, expected_days: 29, coverage: 1 },
+          { year: 2026, month: 10, detections: 4100, frp_sum_mw: 3100, frp_max_mw: 421.5, high_confidence: 800, covered_days: 31, active_days: 31, days_in_month: 31, expected_days: 31, coverage: 1 },
+        ],
+        notes: [],
+      });
+    }
+    if (url.includes("/api/v1/regions/") && url.includes("/yearly")) {
+      return json({
+        status: "ok",
+        region: { id: "region-ng", name: "Nigeria" },
+        window: { start: "2026-09-02", end: "2026-11-01", sensor: "ALL" },
+        years: [
+          { year: 2026, detections: 5300, frp_sum_mw: 4000, frp_max_mw: 421.5, high_confidence: 1000, covered_days: 60, active_days: 60, days_in_year: 365, coverage: 0.16, complete: false, yoy_change: null },
+        ],
+        notes: [],
+      });
+    }
+    if (url.includes("/api/v1/regions/") && url.includes("/seasonality")) {
+      return json({
+        status: "single_year",
+        region: { id: "region-ng", name: "Nigeria" },
+        window: { start: "2026-09-02", end: "2026-11-01", sensor: "ALL" },
+        method: "monthly-climatology",
+        version: "regional-stats-v1",
+        years: [2026],
+        months: Array.from({ length: 12 }, (_, index) => ({
+          month: index + 1,
+          mean: index === 9 ? 4100 : index === 8 ? 1200 : null,
+          median: null,
+          p90: null,
+          years: index === 9 || index === 8 ? 1 : 0,
+          sufficient: false,
+          index: null,
+        })),
+        peak_month: null,
+        trough_month: null,
+        seasonal_amplitude: null,
+        sufficient_months: 0,
+        required_months: 6,
+        day_of_year: { smoothing_days: 15, coverage: "±7 days", points: [] },
+        requirements: {
+          needed_years: 2,
+          available_years: 1,
+          note: "Only one year of coverage is available; this is not a climatology.",
+        },
+      });
+    }
+    if (url.includes("/api/v1/regions/") && url.includes("/trends")) {
+      return json({
+        status: "insufficient_years",
+        region: { id: "region-ng", name: "Nigeria" },
+        window: { start: "2026-09-02", end: "2026-11-01", sensor: "ALL" },
+        annual: [{ year: 2026, detections: 5300, complete: false, coverage: 0.16 }],
+        yoy: [],
+        rolling: { daily_30: [], daily_90: [], monthly_12: [] },
+        mann_kendall: {
+          status: "insufficient_data",
+          n: 1,
+          s: null,
+          z: null,
+          p_value: null,
+          trend: "unknown",
+          sen_slope_per_year: null,
+          sen_slope_per_decade: null,
+          serial_correlation: null,
+        },
+        significant: false,
+        seasonal_trends: [],
+        requirements: {
+          needed_years: 8,
+          available_complete_years: 0,
+          note: "A significance test needs 8 complete years.",
+        },
+        caveats: ["Mann–Kendall assumes independent observations."],
+      });
+    }
+    if (url.includes("/api/v1/regions/") && url.includes("/anomalies")) {
+      return json({
+        status: "insufficient_history",
+        region: { id: "region-ng", name: "Nigeria" },
+        window: { start: "2026-09-02", end: "2026-11-01", sensor: "ALL" },
+        evaluated_months: 0,
+        count: 0,
+        anomalies: [],
+        requirements: {
+          needed_baseline_years: 4,
+          note: "A same-month baseline needs 4 other years; this window does not have them.",
+        },
+        notes: [],
+      });
+    }
+    if (url.includes("/api/v1/regions/") && url.includes("/spatial-activity")) {
+      return json({
+        status: "ok",
+        region: { id: "region-ng", name: "Nigeria" },
+        grid_degrees: 0.5,
+        cells: [
+          { lat_index: 197, lon_index: 378, latitude: 8.75, longitude: 9.25, detections: 1200, frp_sum_mw: 900, frp_max_mw: 42.1, years_with_detections: 1, recurrence: 1, first_year: 2026, last_year: 2026 },
+        ],
+        returned: 1,
+        notes: ["This is a 0.5° screening grid."],
+      });
+    }
+    if (url.includes("/api/v1/regions/") && url.includes("/sensor-comparison")) {
+      return json({
+        status: "ok",
+        region: { id: "region-ng", name: "Nigeria" },
+        window: { start: "2026-09-02", end: "2026-11-01" },
+        sensors: {
+          MODIS: { detections: 3074, active_days: 60, covered_days: 61, first_date: "2026-09-02", last_date: "2026-11-01" },
+          VIIRS: { detections: 65568, active_days: 61, covered_days: 61, first_date: "2026-09-02", last_date: "2026-11-01" },
+        },
+        correlation: { pearson_r: 0.9462, months: 3, method: "monthly totals" },
+        notes: [],
+        requirements: { note: "Both sensors are present." },
+      });
+    }
+    if (url.includes("/api/v1/regions")) {
+      return json({
+        regions: [
+          {
+            name: "Nigeria",
+            iso: "NG",
+            latitude: 9.08,
+            longitude: 8.68,
+            bbox: [2.5, 4.0, 14.7, 13.9],
+            detections: 420,
+            frp_sum_mw: 52.4,
+            frp_max_mw: 18.2,
+            active_days: 1,
+            region_id: "region-ng",
+          },
+        ],
+        note: "Regions are approximate centroid boxes from the offline gazetteer.",
+        half_degrees: 6,
+      });
+    }
+    if (url.includes("/api/v1/exposure/assets")) {
+      if (String(input).includes("/api/v1/exposure/assets") && (init?.method ?? "GET") === "POST") {
+        return json({
+          id: "asset-1",
+          name: "Depot",
+          category: "facility",
+          latitude: 9.06,
+          longitude: 7.49,
+        }, 201);
+      }
+      return json([
+        { id: "asset-1", name: "Depot", category: "facility", latitude: 9.06, longitude: 7.49 },
+      ]);
+    }
+    if (url.includes("/api/v1/exposure/screen")) {
+      return json({
+        assets: [
+          {
+            asset_id: "asset-1",
+            name: "Depot",
+            category: "facility",
+            latitude: 9.06,
+            longitude: 7.49,
+            detections_within_radius: 3,
+            frp_sum_mw: 20.1,
+            frp_max_mw: 9.9,
+            nearest: {
+              distance_km: 1.2,
+              latitude: 9.07,
+              longitude: 7.5,
+              acquired_at: "2026-10-30T12:41:00Z",
+              frp_mw: 9.9,
+              sensor: "VIIRS",
+            },
+          },
+        ],
+        asset_count: 1,
+        radius_km: 50,
+        observations_scanned: 420,
+        truncated: false,
+        note: "Proximity to detections, not a risk score.",
+      });
+    }
+    if (url.includes("/api/v1/assistant/chat")) {
+      return json({
+        answer: "420 detections between 2026-10-30 and 2026-10-31.",
+        intent: "totals",
+        scope: {
+          start_date: "2026-10-30",
+          end_date: "2026-10-31",
+          bbox: null,
+          place: null,
+        },
+        data: {},
+        method: "deterministic",
+        capabilities: ["how many detections"],
+        notes: [],
+      });
+    }
+    if (url.includes("/api/v1/infrastructure/status")) {
+      return json({
+        deployment_mode: "local",
+        database_mode: "local",
+        storage: {
+          mode: "local",
+          local_directory: "./data",
+          database_mode: "local",
+          r2_bucket: null,
+          r2_configured: false,
+          available: true,
+          provider: "local",
+          used_bytes: 41_000_000,
+          free_bytes: 130_000_000_000,
+          allocation_bytes: 26_843_545_600,
+        },
+        database: {
+          dialect: "postgresql",
+          size_bytes: 19_218_764_259,
+          tables: 12,
+          cloud_database_configured: false,
+        },
+        rollups: { available: true, rows: 1646, dialect: "postgresql" },
+      });
+    }
+    if (url.includes("/api/v1/auth/status")) {
+      return json({
+        authentication: true,
+        authenticated: true,
+        required: false,
+        open_access: false,
+        user: {
+          id: "u1",
+          email: "ops@example.com",
+          display_name: "Operator",
+          role: "admin",
+          is_active: true,
+        },
+        roles: ["admin", "analyst", "viewer"],
+        method: "argon2id + server-side session cookie",
+      });
+    }
+    if (url.includes("/api/v1/auth/users")) return json([]);
+    if (url.includes("/api/v1/admin/ingestion/sources")) {
+      return json([
+        { code: "MODIS_NRT", sensor: "MODIS", satellite: "Aqua", registered: true, observations: 0 },
+      ]);
+    }
+    if (url.includes("/api/v1/admin/ingestion/tiles")) {
+      return json([{ key: "world", bbox: "-180,-90,180,90" }]);
+    }
+    if (url.includes("/api/v1/history/datasets")) return json([]);
+    if (url.includes("/api/v1/history/jobs")) return json([]);
+    if (url.includes("/api/v1/admin/ingestion/jobs")) {
+      return json([
+        {
+          id: "run-1",
+          source_code: "MODIS_SP",
+          status: "succeeded",
+          started_at: "2026-11-04T10:00:00Z",
+          completed_at: "2026-11-04T10:05:00Z",
+          records_received: 2,
+          records_inserted: 2,
+          records_rejected: 0,
+          is_synthetic: true,
+          error_message: null,
+          query_parameters: { start_date: "2026-10-28", end_date: "2026-10-28" },
+        },
+      ]);
+    }
+    if (url.includes("/api/v1/admin/ingestion/runs/") && url.includes("/preview")) {
+      return json({
+        run_id: "run-1",
+        source_code: "MODIS_SP",
+        start_date: "2026-10-28",
+        end_date: "2026-10-28",
+        observations: 2,
+        raw_observations: 2,
+        matches: 0,
+        partitions: 1,
+        already_deleted: false,
+      });
+    }
+    if (url.includes("/api/v1/auth/login")) {
+      return json({ user: { id: "u1", email: "ops@example.com", role: "admin" } });
+    }
+    if (url.includes("/api/v1/admin/settings/firms")) {
+      if (init?.method === "PUT") firmsConfigured = true;
+      if (init?.method === "DELETE") firmsConfigured = false;
+      return json(
+        firmsConfigured
+          ? {
+              configured: true,
+              source: "database",
+              masked: "????????9f2c",
+              updated_at: "2026-11-04T10:00:00Z",
+              hint: "Stored server-side.",
+            }
+          : {
+              configured: false,
+              source: "none",
+              masked: null,
+              updated_at: null,
+              hint: "Request a free key.",
+            },
+      );
+    }
+    if (url.includes("/api/v1/admin/raw/inventory")) {
+      return json({
+        policy: {
+          retention_days: 90,
+          retention_cutoff: "2026-08-06",
+          export_min_age_days: 5,
+          export_cutoff: "2026-10-30",
+          export_max_days: 62,
+        },
+        totals: { rows: 6218624, payload_bytes: 1771000000, days: 40, past_retention_rows: 240953 },
+        days: [
+          {
+            day: "2026-09-02",
+            rows: 1000,
+            payload_bytes: 300000,
+            exportable: true,
+            past_retention: false,
+          },
+          {
+            day: "2024-12-01",
+            rows: 2000,
+            payload_bytes: 600000,
+            exportable: true,
+            past_retention: true,
+          },
+        ],
+      });
+    }
+    if (url.includes("/api/v1/admin/raw/exports")) return json([]);
+    if (url.includes("/api/v1/infrastructure/datasets")) {
+      return json({
+        root: "./data/firewatch-data",
+        count: 1,
+        total_bytes: 41_335_227,
+        records: 1_120_880,
+        datasets: [
+          {
+            dataset: "detections-2026-10",
+            path: "harmonized/year=2026/month=10/detections.parquet",
+            kind: "harmonized",
+            sensor: "all",
+            coverage_start: "2026-10-01",
+            coverage_end: "2026-10-31",
+            partition: "year=2026/month=10",
+            records: 1_120_880,
+            size_bytes: 41_335_227,
+            checksum: "abcdef1234567890abcdef",
+            schema_version: "detections-parquet-v1",
+            processing_version: "export-v1",
+            local_path: "./data/firewatch-data/harmonized/year=2026/month=10/detections.parquet",
+            sync_status: "missing",
+          },
+        ],
+      });
+    }
+    if (url.includes("/api/v1/infrastructure/storage/test")) {
+      return json({ ok: true, provider: "local", root: "./data", free_bytes: 130_000_000_000 });
+    }
+    if (url.includes("/api/v1/analytics/summary")) return json(analytics);
+    if (/\/api\/v1\/anomalies(\?|$)/.test(url)) return json(anomalies);
+    if (url.includes("/api/v1/calendar/intelligence")) return json(intelligence);
+    if (url.includes("/api/v1/calendar/months")) {
+      return json([
+        {
+          month: "2026-10",
+          start: "2026-10-01",
+          end: "2026-10-31",
+          detections: 420,
+          active_days: 2,
+          observed_days: 3,
+        },
+      ]);
+    }
+    if (url.includes("/api/v1/calendar/drilldown")) {
+      // Answer for the bucket that was actually clicked, not a fixed one.
+      const requested = new URL(url, "http://localhost").searchParams.get("bucket_start");
+      const matching =
+        calendar.buckets.find((item) => item.start === requested) ??
+        calendar.buckets[0] ??
+        calendarDrilldown.bucket;
+      const items = matching.state === "active" ? calendarDrilldown.items : [];
+      return json({
+        bucket: matching,
+        total: matching.detections,
+        returned: items.length,
+        limit: 200,
+        items,
+      });
+    }
+    if (url.includes("/api/v1/calendar")) return json(calendar);
+    if (/\/api\/v1\/fires(\?|$)/.test(url)) return json(observations);
+    if (url.includes("/api/v1/fires/aggregate")) return json(mapCells);
+    if (url.includes("/api/v1/fires/geojson")) return json(EMPTY_GEOMETRY);
+    if (url.includes("/api/v1/geo/search")) return json(PLACE_RESULTS);
+    if (url.includes("/api/v1/fires/") && mapObservation) return json(mapObservation);
+    if (url.includes("/api/v1/system/status")) return json(status);
+    if (url.includes("/api/v1/system/modules")) return json(MODULES);
+    if (url.includes("/api/v1/system/sources")) return json(SOURCES);
+    if (url.includes("/api/v1/dashboard")) return json(dashboard);
+    if (url.includes("/api/v1/harmonization/series")) {
+      return json({
+        status: "ok",
+        algorithm_version: "harmonized-series-v1",
+        start_date: "2026-10-30",
+        end_date: "2026-10-31",
+        definition:
+          "harmonized = MODIS + VIIRS - distinct VIIRS detections with at least one probable or possible MODIS association on the same UTC day",
+        days: [
+          { date: "2026-10-30", modis: 41, viirs: 379, raw: 420, matched_viirs: 12, harmonized: 408, reduction_ratio: 0.0317 },
+        ],
+        totals: { modis: 41, viirs: 379, raw: 420, matched_viirs: 12, harmonized: 408, reduction_ratio: 0.0317 },
+        coverage: { days: 1, days_with_matches: 1 },
+        notes: ["Counts are detections, not fires.", "12 VIIRS detections were also seen by MODIS."],
+      });
+    }
+    if (url.includes("/api/v1/harmonization/summary")) return json(summary);
+    if (url.includes("/api/v1/harmonization/matches")) return json(matches);
+    if (url.includes("/api/v1/harmonization/events")) return json(events);
+    if (url.includes("/api/v1/harmonization/jobs")) return json([]);
+    if (url.includes("/api/v1/admin/ingestion/run") && !url.includes("run-all")) {
+      const body = init?.body ? (JSON.parse(String(init.body)) as { source_code?: string }) : {};
+      return json({
+        run_id: `run-${body.source_code ?? "unknown"}`,
+        source_code: body.source_code ?? "UNKNOWN",
+        status: "succeeded",
+        records_received: 20,
+        records_inserted: 20,
+        records_rejected: 0,
+        partitions_completed: 1,
+        partitions_skipped: 0,
+        rejections: {},
+        errors: [],
+        is_synthetic: false,
+        harmonization: null,
+        events: null,
+      });
+    }
+    if (url.includes("/api/v1/harmonization/run")) {
+      return json({ scopes: [], events: [] });
+    }
+    if (url.includes("/api/v1/admin/ingestion/run-all")) {
+      return json({
+        start_date: "2026-10-30",
+        end_date: "2026-10-31",
+        sources_requested: 2,
+        sources_succeeded: 2,
+        sources_failed: 0,
+        records_received: 40,
+        records_inserted: 40,
+        records_rejected: 0,
+        results: [
+          {
+            run_id: "run-1",
+            source_code: "MODIS_NRT",
+            status: "succeeded",
+            records_received: 20,
+            records_inserted: 20,
+            records_rejected: 0,
+            partitions_completed: 1,
+            partitions_skipped: 0,
+            rejections: {},
+            errors: [],
+            is_synthetic: false,
+            harmonization: null,
+            events: null,
+          },
+          {
+            run_id: "run-2",
+            source_code: "VIIRS_SNPP_NRT",
+            status: "succeeded",
+            records_received: 20,
+            records_inserted: 20,
+            records_rejected: 0,
+            partitions_completed: 1,
+            partitions_skipped: 0,
+            rejections: {},
+            errors: [],
+            is_synthetic: false,
+            harmonization: null,
+            events: null,
+          },
+        ],
+        harmonization: null,
+        events: null,
+      });
+    }
+    if (url.includes("/api/v1/admin/ingestion/jobs")) return json([]);
+    if (url.includes("/api/v1/admin/ingestion/sources")) return json(SOURCE_HEALTH);
+    return json({ error: { code: "not_found", message: "unmocked", details: {} } }, 404);
+  });
+
+  vi.stubGlobal("fetch", mock);
+  return mock;
+}

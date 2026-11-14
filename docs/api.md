@@ -1,0 +1,283 @@
+# API
+
+Base path: `/api/v1`. Interactive documentation: `/api/docs` (OpenAPI JSON at
+`/api/openapi.json`). Everything is JSON; timestamps are ISO-8601 UTC.
+
+## Error envelope
+
+Every failure — validation, not-found, not-implemented, internal — uses one shape:
+
+```json
+{
+  "error": {
+    "code": "not_implemented",
+    "message": "Observation search is not implemented yet.",
+    "details": {"module": "Observation search", "current_phase": "Phase 1",
+                "planned_for_phase": "Phase 2"},
+    "request_id": "3f9c…"
+  }
+}
+```
+
+| Code | HTTP | Meaning |
+| --- | --- | --- |
+| `bad_request` | 400 | Malformed request |
+| `unauthorized` / `forbidden` | 401 / 403 | Auth (Phase 8) |
+| `not_found` | 404 | Unknown route or record |
+| `unprocessable` | 422 | Schema validation failed; `details.errors` lists fields |
+| `rate_limited` | 429 | Client exceeded its budget |
+| `not_implemented` | 501 | Contract published, module pending — **never fake data** |
+| `unavailable` | 503 | Dependency down (database, upstream) |
+| `internal_error` | 500 | Unexpected failure, logged with the request id |
+
+Every response carries `X-Request-ID` (echoed if supplied) and `X-Process-Time-Ms`.
+
+## Probes (no version prefix)
+
+| Method | Path | Behaviour |
+| --- | --- | --- |
+| GET | `/health` | Liveness. 200 `{"status":"ok","service":"FIREWATCH X","version":"0.1.0"}` |
+| GET | `/ready` | Readiness. Probes the database; 503 with `database.error` when unreachable |
+
+## System
+
+| Method | Path | Behaviour |
+| --- | --- | --- |
+| GET | `/system/status` | Phase, uptime, database probe, data freshness, capabilities, modules |
+| GET | `/system/modules` | Module registry: key, label, route, phase, status, planned capabilities |
+| GET | `/system/sources` | The eight registered NASA FIRMS products with ingestion state |
+
+`/system/status` is the honesty surface. In Phase 1 it returns:
+
+```json
+{
+  "data": {
+    "freshness": "no_data",
+    "freshness_reason": "FIRMS_MAP_KEY is not configured, so no NASA observations can be retrieved…",
+    "firms_configured": false,
+    "sources_registered": 8,
+    "observations_stored": null,
+    "last_ingested_at": null,
+    "last_observation_at": null
+  },
+  "capabilities": {"authentication": false, "ingestion": false, "spatial": false, "...": false}
+}
+```
+
+## Published but pending
+
+These routes exist so the contract is fixed before implementation. All currently return `501`.
+
+| Group | Paths | Phase |
+| --- | --- | --- |
+| Calendar | `/calendar` | 5 |
+| Anomalies | `/anomalies` | 6 |
+| Regions | `/regions` | 6 |
+| Exposure | `/exposure` | 6 |
+| Reports | `/reports` | 7 |
+| Assistant | `POST /assistant/chat` | 7 |
+| Auth | `POST /auth/login` | 8 |
+
+## Implemented (Phases 2–3)
+
+### Observations
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/fires` | Filters: `bbox`, `start_date`, `end_date`, `sensor`, `satellite`, `min_frp`, `daynight`, `synthetic`; `limit` ≤ 5000, `offset` |
+| GET | `/fires/{id}` | Full record including `quality_flags` and fingerprint |
+| GET | `/fires/sources` | Counts and last-seen per product |
+| GET | `/fires/geojson` | Bounded FeatureCollection plus `truncated`/`total` |
+
+### Map
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/fires/aggregate` | Required `bbox`, `zoom` 0–14; returns cells with counts by sensor, max FRP, cell size and total |
+| GET | `/fires/geojson` | Bounded FeatureCollection (≤5,000) with `truncated`/`total` |
+| GET | `/geo/search` | Offline country/city centroids and `lat,lon` parsing |
+
+Filters shared by `/fires`, `/fires/geojson` and `/fires/aggregate`: `bbox`, `start_date`,
+`end_date`, `sensor`, `satellite`, `min_frp`, `daynight`, `min_confidence` (`low|nominal|high`) and
+`synthetic`.
+
+Window: `start_at` / `end_at` take ISO 8601 timestamps (`2026-10-30T06:00:00Z`). `start_at` is
+inclusive, `end_at` exclusive, and both override the date-only bounds — that is how an hour-level
+query is expressed. An unordered window returns `400 bad_request`.
+
+### Calendar
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/calendar` | Required `start_date`, `end_date`; `granularity` day/week/month/year. Buckets and totals include `matched_viirs` and `harmonized` |
+| GET | `/calendar/intelligence` | Trend (Theil–Sen), anomaly markers and seasonal profile for the window; `metric`, `season_years`, `baseline_days`, `z_threshold` |
+| GET | `/calendar/drilldown` | `bucket_start` + `granularity`; returns the bucket plus its detections |
+
+Every bucket in the range is returned, including empty ones, with `state`
+(`active` / `quiet` / `unobserved`), per-day coverage counts from source availability, and six
+metrics: detections, MODIS, VIIRS, FRP sum, FRP max and high-confidence count. Filters are the same
+as `/fires` (`bbox`, `sensor`, `satellite`, `min_frp`, `daynight`, `min_confidence`, `synthetic`).
+
+### Regional intelligence
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/regions` | Ranking of approximate gazetteer boxes, with `region_id` for the engine |
+| GET | `/regions/catalog` | Selectable regions; `level`, `q`, `limit` |
+| POST | `/regions/custom` | `name`, GeoJSON `geometry`, optional `level`; validated polygon |
+| POST | `/regions/radius` | `name`, `latitude`, `longitude`, `radius_km` (0.05–2000) |
+| GET | `/regions/{id}` | Boundary metadata; `include_geometry=true` adds the GeoJSON |
+| POST | `/regions/{id}/analyze` | Body: `start_date`, `end_date`, `sensor?`, `synthetic?`; writes regional statistics |
+| GET | `/regions/{id}/overview` | Totals, coverage, peak month, trend verdict, anomaly count |
+| GET | `/regions/{id}/daily` | Daily rows from the materialised statistics |
+| GET | `/regions/{id}/monthly` | Monthly counts, FRP, coverage and expected days |
+| GET | `/regions/{id}/yearly` | Annual counts, completeness and year-over-year change |
+| GET | `/regions/{id}/seasonality` | Monthly climatology + day-of-year profile with sufficiency gates |
+| GET | `/regions/{id}/trends` | Mann–Kendall, Sen's slope, rolling means, seasonal trends |
+| GET | `/regions/{id}/anomalies` | Same-month robust-z anomalies |
+| GET | `/regions/{id}/spatial-activity` | 0.5° recurring-activity grid inside the polygon |
+| GET | `/regions/{id}/sensor-comparison` | MODIS/VIIRS totals, spans and monthly correlation |
+| GET | `/regions/{id}/export` | Monthly + yearly CSV |
+
+Read endpoints return `status: "not_analyzed"` with a `requirements.note` until the
+window has been analysed; they never return an invented zero. See
+[`regional.md`](regional.md) for the method and the measured timings.
+
+### Analytics and anomalies
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/analytics/summary` | Required `start_date`/`end_date`; totals, daily series, top cells, breakdowns |
+| GET | `/anomalies` | Required `start_date`/`end_date`; robust-z scoring with a short-history fallback |
+| GET | `/admin/performance` | Database/table sizes, rollup freshness, ingestion throughput, RSS/CPU, cache stats |
+| GET | `/harmonization/matches.csv` | CSV export of matches with both observations' provenance |
+| POST | `/admin/ingestion/run-all` | Same window for every registered source, one result per source |
+
+`/analytics/summary` returns every day in the range (zeros included), the peak day, rankings on a
+fixed 2° grid (cells, never countries), sensor/confidence/day-night splits and satellite/product
+counts. `/anomalies` compares each observed day with the median of the preceding
+`baseline_days` observed days and scores the deviation as `(x − median) / (1.4826 × MAD)`.
+If MAD is zero the standard deviation is used as the scale. When there is not enough preceding
+history the engine falls back to a leave-one-out baseline over the evaluated window
+(`method.baseline_source = within_window`, needs `min_window_days`, default 4) and says so;
+with too few days even for that it returns `status: insufficient_history` and `requirements`.
+
+### Reports, regions, exposure and assistant
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/reports/summary` | Snapshot: headline totals, series, ranked cells, matches, anomalies, coverage |
+| GET | `/reports/export` | `format=markdown|json` download of the same report |
+| GET | `/regions` | Country profiles over approximate centroid boxes (labelled as such) |
+| GET/POST/DELETE | `/exposure/assets` | Watched assets for screening |
+| GET | `/exposure/screen` | Detections within `radius_km` of each asset |
+| POST | `/assistant/chat` | Deterministic question answering over the aggregates |
+
+No endpoint calls a language model: `/assistant/chat` matches a fixed intent set and answers from
+the database, reporting `method: deterministic`, the intent and the exact scope.
+
+### Harmonization
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/harmonization/summary` | Sensor totals, match counts, events, last run and its scope |
+| GET | `/harmonization/series` | Harmonised daily series: raw MODIS/VIIRS minus associated VIIRS duplicates |
+| GET | `/harmonization/coverage` | Days actually scanned for associations, by scope; `synthetic` for fixtures |
+| GET | `/harmonization/matches` | `status`, `min_score`, pagination; full score components |
+| GET | `/harmonization/matches/{id}` | Evidence for one pair |
+| GET | `/harmonization/events` | Estimated events with extent and FRP aggregates |
+| POST | `/harmonization/run` | Body: `synthetic?`, `bbox?`, `start_date?`, `end_date?`, thresholds, `run_events` |
+| GET | `/harmonization/jobs`, `/jobs/{id}` | Algorithm run history and status |
+| GET | `/harmonization/status` | Engine versions, defaults and disclaimers |
+
+### Ingestion administration
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| POST | `/admin/ingestion/run` | `source_code`, `start_date`, `end_date` (≤5 days), `bbox?` or `tile?`; optional harmonization/events |
+| GET | `/admin/ingestion/jobs` | Recent runs with counts and query parameters |
+| GET | `/admin/ingestion/sources` | Registered state, observations, last run and error |
+| GET | `/admin/ingestion/tiles` | `world` plus deterministic global tiles |
+| POST | `/admin/ingestion/availability` | Coverage window → per-date status |
+
+### Historical runs (datasets over long ranges)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/history/datasets` | Dataset bundles (`modis_history`, `viirs_snpp_history`, `all_history`, `nrt`, ...) |
+| GET | `/history/regions` | Backfill region catalogue (bbox + note) |
+| POST | `/history/plan` | Five-day windows after coverage clamping; no ingestion |
+| POST | `/history/jobs` | Start a durable job (`202`); one queued/running job at a time (`409`) |
+| GET | `/history/jobs` | Recent jobs with status and progress |
+| GET | `/history/jobs/{id}` | One job; `progress.phase` is planning/ingesting/harmonizing/done |
+| POST | `/history/jobs/{id}/cancel` | Set the stop flag; checked between windows and days |
+| POST | `/history/jobs/{id}/resume` | Rerun a failed/cancelled job; completed work is skipped |
+| GET | `/history/jobs/{id}/summary` | Final counts, per-source inserts and harmonization summary |
+
+See [history_jobs.md](history_jobs.md) for the function, CLI and job lifecycle.
+
+### Dashboard
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/dashboard` | Detection totals by sensor, FRP sum, match counts, events, freshness |
+
+Without `FIRMS_MAP_KEY`, `POST /admin/ingestion/run` returns `503 unavailable` with a hint — it never
+simulates a retrieval.
+
+## Example requests
+
+```bash
+curl -s http://127.0.0.1:8200/api/v1/system/status | jq '.data'
+curl -s -i http://127.0.0.1:8200/ready
+curl -s http://127.0.0.1:8200/api/v1/fires | jq '.error.details.planned_for_phase'   # "Phase 2"
+```
+
+Planned query shapes once implemented (from the specification):
+
+```
+GET /api/v1/fires?bbox=-5,4,15,14&start_date=2026-01-01&end_date=2026-01-31&sensor=VIIRS
+GET /api/v1/calendar/yearly?region_id=NG&year=2026&metric=raw_detections
+```
+
+## Authentication
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/v1/auth/login` | Sign in; sets the HttpOnly `firewatch_session` cookie |
+| `POST /api/v1/auth/logout` | Revoke the session |
+| `GET /api/v1/auth/me` | Current operator |
+| `GET /api/v1/auth/status` | Whether sign-in is available and who is signed in |
+| `GET /api/v1/auth/users` | List accounts (admin) |
+| `POST /api/v1/auth/users` | Create an account (admin) |
+| `PATCH /api/v1/auth/users/{id}` | Change role or deactivate (admin) |
+
+Passwords are Argon2id hashes. Roles: `admin` (all writes), `analyst` (ingestion,
+harmonization, history, regions), `viewer` (read-only). `X-Admin-Token` remains a
+break-glass admin credential.
+
+## Administration endpoints
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/v1/admin/settings/firms` | FIRMS key status (masked; never the key) |
+| `PUT /api/v1/admin/settings/firms` | Store/replace the key server-side |
+| `DELETE /api/v1/admin/settings/firms` | Remove the stored key, fall back to the environment |
+| `POST /api/v1/admin/settings/firms/test` | Ask FIRMS whether the active key works |
+| `GET /api/v1/admin/raw/inventory` | Payload rows per day, footprint and retention policy |
+| `POST /api/v1/admin/raw/exports` | Export a bounded range as CSV.GZ, record SHA-256 |
+| `GET /api/v1/admin/raw/exports` | Export receipts |
+| `GET /api/v1/admin/raw/exports/{id}/download` | Download the archive |
+| `POST /api/v1/admin/raw/exports/{id}/delete` | Delete that range's payloads (checksum required) |
+| `GET /api/v1/admin/ingestion/runs/{id}/preview` | What deleting one run would remove |
+| `POST /api/v1/admin/ingestion/runs/{id}/delete` | Delete that run's data and rebuild rollups |
+| `GET /api/v1/admin/raw/retention/preview` | What retention would remove |
+| `POST /api/v1/admin/raw/retention` | Apply retention (`confirm: true`) |
+
+Reports export as `json`, `markdown`, `csv`, `geojson` or `pdf`; each includes the methodology, limitations and provenance.
+
+## Access control
+
+No authentication exists yet (Phase 8). The console must therefore be bound to localhost or a
+trusted network. Expensive endpoints — historical ingestion, harmonization runs, report generation
+— will be restricted to `ADMIN`/`ANALYST` roles when auth lands.

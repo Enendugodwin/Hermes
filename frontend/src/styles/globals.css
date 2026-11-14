@@ -1,0 +1,204 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Orbital Intelligence tokens.
+ * Background #131315, surface #0B101D, ink #FFFFFF, muted #8C9099,
+ * accent #60D58B, secondary #72A5F9, tertiary #62D5DD.
+ */
+@layer base {
+  :root,
+  .theme-dark {
+    --fw-bg: 19 19 21;
+    --fw-surface: 11 16 29;
+    --fw-raised: 20 26 43;
+    --fw-line: 255 255 255;
+    --fw-ink: 255 255 255;
+    --fw-muted: 140 144 153;
+    --fw-faint: 103 108 121;
+    --fw-accent: 96 213 139;
+    --fw-azure: 114 165 249;
+    --fw-cyan: 98 213 221;
+    color-scheme: dark;
+  }
+
+  /* Higher-contrast variant: same material system, stronger hairlines and text. */
+  .theme-contrast {
+    --fw-bg: 8 8 10;
+    --fw-surface: 6 10 20;
+    --fw-raised: 16 23 38;
+    --fw-ink: 255 255 255;
+    --fw-muted: 176 182 194;
+    --fw-faint: 132 139 152;
+    --fw-accent: 126 235 163;
+    --fw-azure: 148 188 255;
+  }
+
+  * {
+    border-color: rgb(var(--fw-line) / 0.08);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    background: rgb(var(--fw-bg));
+  }
+
+  body {
+    @apply bg-canvas font-sans font-light text-ink antialiased;
+    font-variant-numeric: tabular-nums;
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-weight: 400;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-1 ring-accent/70 ring-offset-2 ring-offset-canvas;
+  }
+
+  ::selection {
+    @apply bg-accent/25 text-ink;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--fw-line) / 0.12);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--fw-line) / 0.22);
+    background-clip: content-box;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  /*
+   * Glass surface: the material choice. Borders, blur and shadow only reinforce
+   * it. Used by the sidebar, header, cards and popovers so the page reads as one
+   * system.
+   */
+  .glass {
+    background-color: rgb(var(--fw-surface) / 0.62);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgb(var(--fw-line) / 0.08);
+  }
+
+  .glass-soft {
+    background-color: rgb(var(--fw-surface) / 0.4);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+
+  /* Gradient border shell: 1px gradient wrapper with an inset content surface. */
+  .shell {
+    border-radius: 12px;
+    padding: 1px;
+    background-image: linear-gradient(
+      to bottom right,
+      rgb(var(--fw-line) / 0.14),
+      rgb(var(--fw-line) / 0.03),
+      rgb(0 0 0 / 0)
+    );
+  }
+
+  .shell-inner {
+    border-radius: 11px;
+    background-color: rgb(var(--fw-surface) / 0.92);
+    border: 1px solid rgb(var(--fw-line) / 0.04);
+    overflow: hidden;
+  }
+
+  .hairline {
+    border-color: rgb(var(--fw-line) / 0.08);
+  }
+
+  .label {
+    @apply text-3xs font-medium uppercase tracking-[0.16em] text-faint;
+  }
+
+  .measure {
+    @apply font-mono text-sm tabular-nums text-ink;
+  }
+
+  /* Navigation: quiet by default, one green cue when active. */
+  .nav-item {
+    @apply relative flex items-center gap-[10px] rounded-control px-[10px] py-[7px] text-[13px] font-light text-muted transition-colors duration-150;
+  }
+  .nav-item:hover {
+    @apply bg-line/[0.04] text-ink;
+  }
+  .nav-item-active {
+    @apply bg-line/[0.06] text-ink;
+  }
+  .nav-item-active .nav-icon {
+    @apply text-accent;
+  }
+
+  /* Primary action: off-white pill, near-black label (never green-on-green). */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-[#FAFAFA] px-4 py-2 text-xs font-medium text-[#05070F] transition-colors duration-150 hover:bg-white disabled:opacity-40;
+  }
+
+  .btn-glass {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line/10 bg-line/[0.04] px-4 py-2 text-xs font-medium text-muted transition-colors duration-150 hover:border-line/20 hover:text-ink;
+  }
+
+  .divider {
+    @apply h-px w-full bg-line/[0.07];
+  }
+}
+
+/* MapLibre ships light chrome; theme its controls to the dark field so the map
+   reads as one instrument rather than an embedded widget. */
+.maplibregl-ctrl-group {
+  background: rgba(8, 11, 20, 0.82) !important;
+  border: 1px solid rgba(233, 238, 246, 0.1);
+  box-shadow: none !important;
+  backdrop-filter: blur(12px);
+}
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid rgba(233, 238, 246, 0.08) !important;
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1) brightness(1.7);
+}
+.maplibregl-ctrl-attrib {
+  background: rgba(8, 11, 20, 0.82) !important;
+  border-radius: 9999px;
+  color: #8f9aae;
+}
+.maplibregl-ctrl-attrib a {
+  color: #b9c3d4 !important;
+}
+.maplibregl-ctrl-attrib-button {
+  background-color: rgba(8, 11, 20, 0.9) !important;
+}
+.maplibregl-ctrl-scale {
+  background: rgba(8, 11, 20, 0.82) !important;
+  border-color: rgba(233, 238, 246, 0.3) !important;
+  color: #b9c3d4 !important;
+}
+
