@@ -64,18 +64,20 @@ def get_engine() -> Engine:
 
 
 def _configure_postgres_timezone(engine: Engine) -> None:
-    """Pin UTC on pooled connections that cannot take libpq ``options``."""
+    """Pin UTC and the schema on pooled connections that cannot take libpq ``options``."""
 
     @event.listens_for(engine, "connect")
     def _utc_session(dbapi_connection: Any, _record: Any) -> None:
-        # Poolers do not accept ``options`` at startup, but a session-level SET
-        # is allowed. Failing here must not break the connection.
+        # Poolers do not accept ``options`` at startup, and some (Neon's
+        # pgbouncer) hand out an empty search_path, so set both session
+        # settings explicitly. Failing here must not break the connection.
         try:
             cursor = dbapi_connection.cursor()
             cursor.execute("SET TIME ZONE 'UTC'")
+            cursor.execute("SET search_path TO public")
             cursor.close()
             dbapi_connection.commit()
-        except Exception:  # noqa: BLE001 - best effort: Neon is UTC by default
+        except Exception:  # noqa: BLE001 - best effort
             with suppress(Exception):
                 dbapi_connection.rollback()
 
