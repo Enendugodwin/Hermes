@@ -79,7 +79,16 @@ Do **not** commit `.env` or paste the key into `vercel.json`.
 ## 4. Import the project
 
 Vercel's API is not reachable from some networks (the CLI fails with
-`ETIMEDOUT api.vercel.com`), so the reliable path is the dashboard:
+`ETIMEDOUT api.vercel.com`), so the reliable path is the dashboard **or** the
+local source-deployment script:
+
+```powershell
+$env:VERCEL_TOKEN = "<token>"
+$env:VERCEL_API_IP = "64.239.123.129"   # only if api.vercel.com is blocked
+python -m scripts.deploy_vercel --project hermes-nasa --team <team-id>
+```
+
+Dashboard alternative:
 
 1. <https://vercel.com/new> → **Import Git Repository** → `Enendugodwin/Hermes`.
 2. Project name: `hermes-nasa`.
