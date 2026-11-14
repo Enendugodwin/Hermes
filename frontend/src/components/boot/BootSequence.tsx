@@ -184,7 +184,7 @@ export function BootSequence({
               Hermes
             </p>
             <p className="text-2xs font-light uppercase tracking-[0.2em] text-faint">
-              Earth observation
+              Fire observation
             </p>
           </div>
         </div>
