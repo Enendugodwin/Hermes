@@ -1,6 +1,6 @@
 # Design system
 
-HERMES uses the **Mission Control** visual language for Earth observation: a deep-space field,
+HERMES uses the **Mission Control** visual language for fire observation: a deep-space field,
 graphite glass surfaces, hairline separators, one mission-orange accent, signal green for healthy
 systems and a map that owns the workspace. The intent is a professional satellite operations
 console — cinematic but scientifically calm — not a generic analytics dashboard.

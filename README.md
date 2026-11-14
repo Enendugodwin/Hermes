@@ -1,6 +1,6 @@
 # HERMES
 
-**Earth observation intelligence, from satellite detections to defensible analysis.**
+**Fire observation intelligence, from satellite detections to defensible analysis.**
 
 HERMES is the mission-control interface for the FIREWATCH X engine: a geospatial
 intelligence platform for NASA MODIS and VIIRS active-fire observations. It retrieves real

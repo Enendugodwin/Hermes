@@ -311,7 +311,7 @@ export function OverviewPage() {
           <div className="absolute inset-0 flex items-center justify-center bg-canvas">
             <span className="inline-flex items-center gap-2 text-xs font-light text-faint">
               <Loader2 className="size-4 animate-spin" aria-hidden />
-              Initialising Earth observation field…
+              Initialising fire observation field…
             </span>
           </div>
         }
@@ -728,7 +728,7 @@ export function OverviewPage() {
       </div>
 
       <span className="sr-only">
-        <ShieldCheck aria-hidden /> Hermes Earth observation intelligence overview
+        <ShieldCheck aria-hidden /> Hermes fire observation intelligence overview
       </span>
     </div>
   );

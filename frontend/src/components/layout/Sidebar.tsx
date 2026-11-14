@@ -41,7 +41,7 @@ function Wordmark({ compact }: { compact: boolean }) {
           HERMES
         </span>
         <span className="mt-[5px] block truncate text-3xs uppercase tracking-[0.16em] text-faint">
-          Earth Observation
+          Fire Observation
         </span>
       </span>
     </div>
