@@ -222,8 +222,6 @@ export function HarmonizationPage() {
         eyebrow="HERMES / Harmonisation"
         title={navItem?.label ?? module?.label ?? "Harmonisation Centre"}
         description="MODIS and VIIRS normalization, cross-sensor association and estimated event grouping. Raw observations are preserved and never merged."
-        status={module?.status ?? "ready"}
-        phase={module?.phase ?? "Phase 3"}
         actions={headerActions}
       />
 
@@ -346,6 +344,19 @@ export function HarmonizationPage() {
                     </button>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => void harmonized.refetch()}
+                  aria-label="Refresh association series"
+                  title="Refresh association series"
+                  className="btn-glass inline-flex items-center gap-1.5 px-2.5 py-[4px] text-3xs"
+                >
+                  <RotateCw
+                    className={`size-3 ${harmonized.isFetching ? "animate-spin" : ""}`}
+                    aria-hidden
+                  />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
                 <a
                   href={`/api/v1/harmonization/matches.csv?start_date=${dateRange.start}&end_date=${dateRange.end}${
                     statusFilter === "all" ? "" : `&status=${statusFilter}`

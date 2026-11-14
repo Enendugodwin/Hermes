@@ -149,7 +149,7 @@ export function fetchHarmonizedSeries(start: string, end: string, signal?: Abort
   const params = new URLSearchParams({ start_date: start, end_date: end });
   return apiFetch<HarmonizedSeries>(
     `/api/v1/harmonization/series?${params.toString()}`,
-    { signal },
+    { signal, cache: "no-store" },
   );
 }
 

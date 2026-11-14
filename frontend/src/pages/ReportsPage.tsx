@@ -6,13 +6,10 @@ import { DataRow, Panel, StatTile } from "@/components/ui/Panel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { fetchReport, reportExportUrl } from "@/lib/intelligenceApi";
 import { formatCount, formatFrp } from "@/lib/format";
-import { useModules } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
 
 export function ReportsPage() {
   const dateRange = useUiStore((state) => state.dateRange);
-  const { data: modules } = useModules();
-  const module = modules?.find((item) => item.key === "reports");
 
   const report = useQuery({
     queryKey: ["reports", dateRange.start, dateRange.end],
@@ -26,10 +23,8 @@ export function ReportsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Firewatch X / Intelligence"
+        eyebrow="HERMES / Intelligence"
         title="Reports"
-        status={module?.status}
-        phase={module?.phase}
         description="A briefing snapshot assembled from stored detections: totals, trend, ranked cells, harmonization and anomalies. Every number is computed, never written."
         actions={
           <div className="flex items-center gap-2">

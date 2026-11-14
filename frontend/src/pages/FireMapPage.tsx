@@ -228,11 +228,9 @@ export function FireMapPage() {
     <div>
       <div className="relative z-20">
       <PageHeader
-        eyebrow="Firewatch X / Monitoring"
+        eyebrow="HERMES / Monitoring"
         title={module?.label ?? navItem?.label ?? "Global Fire Map"}
         description="Satellite detections from stored observations. Zoomed-out views are served as gridded counts; individual points appear as you zoom in."
-        status={module?.status ?? "in_progress"}
-        phase={module?.phase ?? "Phase 4"}
         actions={
           <form onSubmit={runSearch} className="relative">
             <div className="flex items-center gap-2 rounded-full border border-line/10 bg-line/[0.03] px-3 py-1.5">

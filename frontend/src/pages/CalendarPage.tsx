@@ -22,7 +22,6 @@ import {
   metricValue,
 } from "@/lib/calendarApi";
 import { formatCount, formatFrp } from "@/lib/format";
-import { useModules } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
 
 const GRANULARITIES: { value: CalendarGranularity; label: string; hint: string }[] = [
@@ -68,8 +67,6 @@ function monthsBack(endDate: string, count: number): string {
 
 export function CalendarPage() {
   const dateRange = useUiStore((state) => state.dateRange);
-  const { data: modules } = useModules();
-  const module = modules?.find((item) => item.key === "calendar");
 
   const [granularity, setGranularity] = useState<CalendarGranularity>("day");
   const [metric, setMetric] = useState<CalendarMetric>("detections");
@@ -162,10 +159,8 @@ export function CalendarPage() {
     <>
       <div className="relative z-20">
         <PageHeader
-          eyebrow="Firewatch X / History"
+          eyebrow="HERMES / History"
           title="Burning Calendar"
-          status={module?.status}
-          phase={module?.phase}
           description="Stored detections rolled into days, weeks, months or years. Every period in the range is present: an empty period is either a checked zero or an explicit gap in source coverage."
           actions={
             <div className="flex flex-wrap items-center gap-2">

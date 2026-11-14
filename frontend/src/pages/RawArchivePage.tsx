@@ -217,7 +217,7 @@ export function RawArchivePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Firewatch X / Administration"
+        eyebrow="HERMES / Administration"
         title="Admin Portal"
         description="Raw payloads are provenance only: exports, downloads and retention live here. Calendar, analytics, matches and reports are computed from the canonical store, so deleting a payload never changes a number on screen."
         actions={

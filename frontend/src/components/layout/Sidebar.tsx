@@ -6,15 +6,8 @@ import { HermesMark } from "@/components/brand/HermesMark";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { NAV_SECTIONS } from "@/config/nav";
 import { useAuthStatus } from "@/lib/authApi";
-import { useModules, useSystemStatus } from "@/lib/queries";
+import { useSystemStatus } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
-import type { ModuleStatus } from "@/types/api";
-
-const STATUS_TONE: Record<ModuleStatus, "ok" | "info" | "neutral"> = {
-  ready: "ok",
-  in_progress: "info",
-  scaffolded: "neutral",
-};
 
 function Wordmark({ compact }: { compact: boolean }) {
   if (compact) {
@@ -53,14 +46,9 @@ export function Sidebar() {
   const collapsedPref = useUiStore((state) => state.sidebarCollapsed);
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen);
   const toggleCollapsed = useUiStore((state) => state.toggleSidebarCollapsed);
-  const { data } = useModules();
   const { data: auth } = useAuthStatus();
   const { data: status } = useSystemStatus();
   const canAdmin = auth?.user?.role === "admin";
-
-  const statusFor = (key: string): ModuleStatus =>
-    data?.find((module) => module.key === key)?.status ??
-    (key === "settings" ? "in_progress" : "scaffolded");
 
   const online = status?.database.connected ?? false;
 
@@ -136,14 +124,13 @@ export function Sidebar() {
                   .filter((item) => item.key !== "admin" || canAdmin)
                   .map((item) => {
                     const Icon = item.icon;
-                    const moduleStatus = statusFor(item.key);
                     return (
                       <li key={item.key}>
                         <NavLink
                           to={item.to}
                           end={item.to === "/"}
                           onClick={() => setSidebarOpen(false)}
-                          title={`${item.label} — ${item.phase}`}
+                          title={item.label}
                           className={({ isActive }) =>
                             clsx(
                               "nav-item",
@@ -162,11 +149,6 @@ export function Sidebar() {
                                   )}
                                   aria-hidden
                                 />
-                                {collapsedPref ? (
-                                  <span className="absolute -right-[3px] -top-[2px] hidden lg:block">
-                                    <StatusDot tone={STATUS_TONE[moduleStatus]} className="size-[4px]" />
-                                  </span>
-                                ) : null}
                               </span>
                               <span
                                 className={clsx(
@@ -175,14 +157,6 @@ export function Sidebar() {
                                 )}
                               >
                                 {item.label}
-                              </span>
-                              <span className={clsx(collapsedPref && "lg:hidden")}>
-                                {moduleStatus === "scaffolded" ? null : (
-                                  <StatusDot
-                                    tone={STATUS_TONE[moduleStatus]}
-                                    label={`${item.label}: ${moduleStatus}`}
-                                  />
-                                )}
                               </span>
                             </>
                           )}

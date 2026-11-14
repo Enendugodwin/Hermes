@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/ui/ModuleStatus";
 import { Panel } from "@/components/ui/Panel";
 import { askAssistant, type AssistantReply } from "@/lib/intelligenceApi";
-import { useModules } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
 
 const SUGGESTIONS = [
@@ -18,8 +17,6 @@ const SUGGESTIONS = [
 
 export function AssistantPage() {
   const dateRange = useUiStore((state) => state.dateRange);
-  const { data: modules } = useModules();
-  const module = modules?.find((item) => item.key === "assistant");
 
   const [question, setQuestion] = useState("");
   const [replies, setReplies] = useState<Array<{ question: string; reply: AssistantReply }>>([]);
@@ -45,10 +42,8 @@ export function AssistantPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Firewatch X / Intelligence"
+        eyebrow="HERMES / Intelligence"
         title="AI Assistant"
-        status={module?.status}
-        phase={module?.phase}
         description="Ask a question about the stored detections. Answers are computed from the same aggregates as the screens — no language model writes them, and every reply states its intent and scope."
       />
 

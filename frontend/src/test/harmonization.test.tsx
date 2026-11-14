@@ -1,10 +1,10 @@
 ﻿import { describe, expect, it } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 
 import { renderApp } from "@/test/render";
 import { EVENTS, FIXTURE_SUMMARY, MATCHES, installFetchMock } from "@/test/fixtures";
 
-describe("sensor intelligence (Phase 3)", () => {
+describe("sensor intelligence", () => {
   it("reports an honest empty state before any observation exists", async () => {
     installFetchMock();
     renderApp("/harmonization");
@@ -63,10 +63,33 @@ describe("sensor intelligence (Phase 3)", () => {
     renderApp("/harmonization");
 
     expect(
-      await screen.findByLabelText(/cross-sensor associations per day/i),
+      await screen.findByLabelText(/cross-sensor associations per day by outcome/i),
     ).toBeInTheDocument();
     expect(
       screen.getAllByText(/cross-sensor outcomes \/ utc day/i).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("refreshes the association series on demand", async () => {
+    const fetchMock = installFetchMock({
+      summary: FIXTURE_SUMMARY,
+      matches: MATCHES,
+      events: EVENTS,
+    });
+    renderApp("/harmonization");
+
+    await screen.findByLabelText(/cross-sensor associations per day by outcome/i);
+    const before = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes("/api/v1/harmonization/series"),
+    ).length;
+
+    fireEvent.click(screen.getByLabelText(/refresh association series/i));
+
+    await waitFor(() => {
+      const after = fetchMock.mock.calls.filter((call) =>
+        String(call[0]).includes("/api/v1/harmonization/series"),
+      ).length;
+      expect(after).toBeGreaterThan(before);
+    });
   });
 });

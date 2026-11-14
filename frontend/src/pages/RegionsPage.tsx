@@ -30,7 +30,6 @@ import {
   fetchRegionYearly,
   regionExportUrl,
 } from "@/lib/regionalApi";
-import { useModules } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
 
 const MONTHS = [
@@ -61,8 +60,6 @@ function monthLabel(month: number): string {
 
 export function RegionsPage() {
   const dateRange = useUiStore((state) => state.dateRange);
-  const { data: modules } = useModules();
-  const module = modules?.find((item) => item.key === "regions");
   const queryClient = useQueryClient();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -194,10 +191,8 @@ export function RegionsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Firewatch X / Intelligence"
+        eyebrow="HERMES / Intelligence"
         title="Regional Intelligence"
-        status={module?.status}
-        phase={module?.phase}
         description="Trends, seasonality and anomalies for one boundary. The first analysis pass writes regional statistics; every reload reads those, never the 11 million observations."
         actions={
           <div className="flex flex-wrap items-center gap-2">

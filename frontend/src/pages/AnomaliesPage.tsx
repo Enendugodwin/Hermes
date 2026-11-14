@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/ui/ModuleStatus";
 import { DataRow, Panel, StatTile } from "@/components/ui/Panel";
 import { fetchAnomalies, type AnomalySeverity } from "@/lib/analyticsApi";
 import { formatCount } from "@/lib/format";
-import { useModules } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
 
 const SEVERITY_TONE: Record<AnomalySeverity, "neutral" | "info" | "warn" | "danger"> = {
@@ -28,8 +27,6 @@ const METHOD_STEPS = [
 
 export function AnomaliesPage() {
   const dateRange = useUiStore((state) => state.dateRange);
-  const { data: modules } = useModules();
-  const module = modules?.find((item) => item.key === "anomalies");
 
   const anomalies = useQuery({
     queryKey: ["anomalies", dateRange.start, dateRange.end],
@@ -44,10 +41,8 @@ export function AnomaliesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Firewatch X / Science"
+        eyebrow="HERMES / Science"
         title="Anomaly Detection"
-        status={module?.status}
-        phase={module?.phase}
         description="Days whose detection count departs from their own recent history, scored with a robust z-score. When there is not enough history the engine says so instead of inventing anomalies."
       />
 

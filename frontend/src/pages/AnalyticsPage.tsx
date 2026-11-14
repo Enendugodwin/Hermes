@@ -6,7 +6,6 @@ import { PageHeader } from "@/components/ui/ModuleStatus";
 import { Panel, StatTile } from "@/components/ui/Panel";
 import { fetchAnalytics, trendBars } from "@/lib/analyticsApi";
 import { formatCount, formatFrp, formatPercent } from "@/lib/format";
-import { useModules } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
 
 function pct(value: number, total: number): number {
@@ -58,8 +57,6 @@ function SplitBar({
 
 export function AnalyticsPage() {
   const dateRange = useUiStore((state) => state.dateRange);
-  const { data: modules } = useModules();
-  const module = modules?.find((item) => item.key === "analytics");
 
   const analytics = useQuery({
     queryKey: ["analytics", dateRange.start, dateRange.end],
@@ -76,10 +73,8 @@ export function AnalyticsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Firewatch X / History"
+        eyebrow="HERMES / History"
         title="Analytics"
-        status={module?.status}
-        phase={module?.phase}
         description="Trends, rankings and sensor breakdowns computed from the same stored detections as the map and calendar. Counts are detections, not fires."
       />
 

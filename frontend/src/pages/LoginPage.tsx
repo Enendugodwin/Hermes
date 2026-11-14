@@ -37,7 +37,7 @@ export function LoginPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Firewatch X / Security"
+        eyebrow="HERMES / Security"
         title="Operator sign-in"
         description="Role-based accounts (admin, analyst, viewer) with Argon2id passwords and server-side sessions. Readers do not need an account unless the deployment requires one."
       />

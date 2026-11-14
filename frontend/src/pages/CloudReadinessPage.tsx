@@ -10,15 +10,12 @@ import {
   useInfrastructure,
   useSyncActions,
 } from "@/lib/infrastructureApi";
-import { useModules } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
 
 const MODE_TONE = { local: "ok", hybrid: "info", cloud: "warn" } as const;
 
 export function CloudReadinessPage() {
   const dateRange = useUiStore((state) => state.dateRange);
-  const { data: modules } = useModules();
-  const module = modules?.find((item) => item.key === "cloud-readiness");
 
   const status = useInfrastructure();
   const datasets = useDatasets();
@@ -36,10 +33,8 @@ export function CloudReadinessPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Firewatch X / Infrastructure"
+        eyebrow="HERMES / Infrastructure"
         title="Cloud Readiness"
-        status={module?.status}
-        phase={module?.phase}
         description="Deployment mode, storage, dataset inventory and the path to Cloudflare R2. Local mode needs no cloud credentials; nothing is uploaded until you ask for it."
         actions={
           <div className="flex flex-wrap items-center gap-2">

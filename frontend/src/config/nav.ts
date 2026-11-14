@@ -16,15 +16,11 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import type { ModuleStatus } from "@/types/api";
-
 export interface NavItem {
   key: string;
   label: string;
   to: string;
   icon: LucideIcon;
-  /** Delivery phase from the implementation plan. */
-  phase: string;
   /** Short label used in the collapsed rail and command palette. */
   group: string;
 }
@@ -48,7 +44,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Overview",
         to: "/",
         icon: LayoutDashboard,
-        phase: "Phase 4",
         group: "Global mission picture",
       },
       {
@@ -56,7 +51,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Intelligence Map",
         to: "/map",
         icon: MapIcon,
-        phase: "Phase 4",
         group: "Geospatial workspace",
       },
     ],
@@ -69,7 +63,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Burning Calendar",
         to: "/calendar",
         icon: CalendarDays,
-        phase: "Phase 5",
         group: "Historical activity",
       },
       {
@@ -77,7 +70,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Analytics",
         to: "/analytics",
         icon: LineChart,
-        phase: "Phase 6",
         group: "Trends and rankings",
       },
     ],
@@ -90,7 +82,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Harmonisation Centre",
         to: "/harmonization",
         icon: Layers,
-        phase: "Phase 3",
         group: "MODIS / VIIRS fusion",
       },
       {
@@ -98,7 +89,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Anomaly Intelligence",
         to: "/anomalies",
         icon: Radar,
-        phase: "Phase 6",
         group: "Statistical baselines",
       },
     ],
@@ -111,7 +101,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Data Query",
         to: "/query",
         icon: Search,
-        phase: "Phase 5",
         group: "Filter stored detections",
       },
       {
@@ -119,7 +108,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Regional Explorer",
         to: "/regions",
         icon: Globe2,
-        phase: "Phase 6",
         group: "Regional profiles",
       },
       {
@@ -127,7 +115,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Exposure Analysis",
         to: "/exposure",
         icon: ShieldAlert,
-        phase: "Phase 6",
         group: "Geographic screening",
       },
       {
@@ -135,7 +122,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Reports & Exports",
         to: "/reports",
         icon: FileText,
-        phase: "Phase 7",
         group: "Exports and briefings",
       },
       {
@@ -143,7 +129,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Hermes Intelligence",
         to: "/assistant",
         icon: Sparkles,
-        phase: "Phase 7",
         group: "Investigate with tools",
       },
     ],
@@ -156,7 +141,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Infrastructure",
         to: "/infrastructure",
         icon: Cloud,
-        phase: "Phase 9",
         group: "Storage, datasets and sync",
       },
       {
@@ -164,7 +148,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Settings",
         to: "/settings",
         icon: Settings2,
-        phase: "Phase 1",
         group: "Status and administration",
       },
       {
@@ -172,7 +155,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Admin Portal",
         to: "/admin",
         icon: Archive,
-        phase: "Phase 9",
         group: "FIRMS key and raw archive",
       },
     ],
@@ -184,8 +166,3 @@ export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((section) => section.it
 export function findNavItemByKey(key: string): NavItem | undefined {
   return NAV_ITEMS.find((item) => item.key === key);
 }
-
-/** Static fallback status used before the API responds. */
-export const DEFAULT_STATUS: Record<string, ModuleStatus> = Object.fromEntries(
-  NAV_ITEMS.map((item) => [item.key, item.key === "settings" ? "in_progress" : "scaffolded"]),
-);

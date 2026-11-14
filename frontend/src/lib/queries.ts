@@ -88,7 +88,11 @@ export function useHarmonizedSeries(start: string, end: string) {
   return useQuery({
     queryKey: ["harmonized-series", start, end],
     queryFn: ({ signal }) => fetchHarmonizedSeries(start, end, signal),
-    staleTime: 60_000,
+    // The series changes whenever ingestion or association runs complete, and
+    // those runs can be triggered from another tab, the CLI or a scheduler.
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     retry: 1,
   });
 }
@@ -157,6 +161,7 @@ export function useRunHarmonization() {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["harmonization"] });
+      void queryClient.invalidateQueries({ queryKey: ["harmonized-series"] });
       void queryClient.invalidateQueries({ queryKey: queryKeys.systemStatus });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
       void queryClient.invalidateQueries({ queryKey: ["analytics"] });

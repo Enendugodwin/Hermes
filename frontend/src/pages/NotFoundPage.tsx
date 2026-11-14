@@ -9,7 +9,7 @@ export function NotFoundPage() {
       </span>
       <h1 className="text-lg font-semibold text-ink">No such view</h1>
       <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-muted">
-        That route does not correspond to a FIREWATCH X module. Use the navigation or the command
+        That route does not correspond to a HERMES module. Use the navigation or the command
         palette (Ctrl K) to reach a workspace.
       </p>
       <Link

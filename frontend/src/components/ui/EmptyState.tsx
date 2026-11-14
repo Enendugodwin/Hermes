@@ -1,8 +1,6 @@
 import { Clock } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Badge } from "./Badge";
-
 /** Shown when a module exists but has no data yet — never faked numbers. */
 export function EmptyState({
   title,
@@ -24,21 +22,5 @@ export function EmptyState({
       <p className="mt-2 max-w-md text-xs font-light leading-relaxed text-muted">{description}</p>
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
-  );
-}
-
-export function PendingDataNotice({ phase }: { phase: string }) {
-  return (
-    <EmptyState
-      title="No observations available yet"
-      description={
-        <>
-          This view is wired to the API, but nothing has been ingested. NASA FIRMS ingestion
-          arrives in <span className="text-ink">{phase}</span>; until then the platform reports an
-          empty state rather than sample data.
-        </>
-      }
-      action={<Badge tone="warn">no data</Badge>}
-    />
   );
 }

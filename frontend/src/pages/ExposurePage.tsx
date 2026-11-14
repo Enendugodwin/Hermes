@@ -12,13 +12,10 @@ import {
   fetchScreen,
   removeAsset,
 } from "@/lib/intelligenceApi";
-import { useModules } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
 
 export function ExposurePage() {
   const dateRange = useUiStore((state) => state.dateRange);
-  const { data: modules } = useModules();
-  const module = modules?.find((item) => item.key === "exposure");
   const queryClient = useQueryClient();
 
   const [name, setName] = useState("");
@@ -65,10 +62,8 @@ export function ExposurePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Firewatch X / Intelligence"
+        eyebrow="HERMES / Intelligence"
         title="Exposure Analysis"
-        status={module?.status}
-        phase={module?.phase}
         description="Register the places you care about, then measure which detections fell within 50 km of them. No population or infrastructure dataset is bundled, so this is proximity — not a damage or risk score."
       />
 

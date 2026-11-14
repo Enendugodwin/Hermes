@@ -9,7 +9,6 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import { ApiError } from "@/lib/api";
 import {
   useIngestionRuns,
-  useModules,
   useRunAllIngestion,
   useRunIngestion,
   useSourceHealth,
@@ -266,8 +265,6 @@ function IngestionConsole() {
 
 export function SettingsPage() {
   const { data: status, isError } = useSystemStatus();
-  const { data: modules } = useModules();
-  const module = modules?.find((item) => item.key === "settings");
   const { data: sources } = useSources();
   const { data: health } = useSourceHealth();
   const { data: runs } = useIngestionRuns();
@@ -302,11 +299,9 @@ export function SettingsPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Firewatch X / System"
+        eyebrow="HERMES / System"
         title="Settings & Administration"
         description="Configuration, ingestion control, data-source registry and capability truth for this deployment."
-        status={module?.status ?? "in_progress"}
-        phase={module?.phase ?? "Phase 1"}
       />
 
       {isError ? (
@@ -318,17 +313,11 @@ export function SettingsPage() {
         </div>
       ) : null}
 
-      <div className="mb-[12px] grid gap-[10px] sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-[12px] grid gap-[10px] sm:grid-cols-2 xl:grid-cols-3">
         <StatTile
           label="Environment"
           value={status?.environment ?? "—"}
           hint={status ? `${status.app_name} v${status.app_version}` : undefined}
-        />
-        <StatTile
-          label="Phase"
-          value={status ? `${status.phase} · ${status.phase_name}` : "—"}
-          hint="Current delivery milestone"
-          tone="info"
         />
         <StatTile
           label="Observations stored"
@@ -489,12 +478,12 @@ export function SettingsPage() {
                 <CapabilityRow
                   label="NASA ingestion"
                   enabled={status?.capabilities.ingestion ?? false}
-                  note="Implemented in Phase 2; reports false only when FIRMS_MAP_KEY is unset."
+                  note="Reports false only when FIRMS_MAP_KEY is unset."
                 />
                 <CapabilityRow
                   label="Harmonization engine"
                   enabled
-                  note="Cross-sensor association and event grouping (Phase 3)."
+                  note="Cross-sensor association and event grouping."
                 />
                 <CapabilityRow
                   label="Spatial queries"
@@ -504,7 +493,7 @@ export function SettingsPage() {
                 <CapabilityRow
                   label="Authentication & RBAC"
                   enabled={false}
-                  note="Argon2id, roles and sessions arrive in the security phase."
+                  note="Argon2id, roles and server-side sessions."
                 />
                 <CapabilityRow
                   label="Rate limiting"

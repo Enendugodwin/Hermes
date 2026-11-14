@@ -33,11 +33,6 @@ export class ApiError extends Error {
   get isPending() {
     return this.code === "not_implemented";
   }
-
-  get plannedForPhase() {
-    const value = this.details["planned_for_phase"];
-    return typeof value === "string" ? value : null;
-  }
 }
 
 function isErrorBody(value: unknown): value is ApiErrorBody {

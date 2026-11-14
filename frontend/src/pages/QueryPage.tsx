@@ -76,9 +76,8 @@ export function QueryPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Firewatch X / Intelligence"
+        eyebrow="HERMES / Intelligence"
         title="Data Query"
-        phase="Phase 5"
         description="Filter the stored detections and read the matching rows. The period follows the header; every row is a detection, not a fire, and carries its full NASA FIRMS provenance."
       />
 

@@ -17,7 +17,7 @@ interface Notice {
 
 /**
  * Notices are derived from real system state, never from invented events. They
- * are the honest subset of what the alert engine will emit in Phase 7.
+ * are the honest subset of what the alert engine can emit.
  */
 function buildNotices(status: ReturnType<typeof useSystemStatus>["data"]): Notice[] {
   if (!status) return [];
@@ -40,7 +40,7 @@ function buildNotices(status: ReturnType<typeof useSystemStatus>["data"]): Notic
       id: "no-data",
       title: "No observations ingested yet",
       detail:
-        "Ingestion ships in Phase 2. Every module reports an empty state until then — no sample data is used.",
+        "Ingest a window from Settings. Every module reports an empty state until data exists — no sample data is used.",
       tone: "info",
       to: "/settings",
     });
@@ -63,14 +63,6 @@ function buildNotices(status: ReturnType<typeof useSystemStatus>["data"]): Notic
       to: "/settings",
     });
   }
-
-  notices.push({
-    id: "phase",
-    title: `Phase ${status.phase} — ${status.phase_name}`,
-    detail: "Foundation is built. NASA integration, harmonization and the burning calendar follow.",
-    tone: "neutral",
-    to: "/settings",
-  });
 
   return notices;
 }
