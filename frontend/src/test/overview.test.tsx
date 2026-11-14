@@ -82,6 +82,33 @@ describe("hermes overview", () => {
     expect(screen.getAllByText(/2026-10-29/i).length).toBeGreaterThan(0);
   });
 
+  it("plots cross-sensor associations over the selected period", async () => {
+    renderApp("/");
+
+    expect(
+      await screen.findByLabelText(/cross-sensor associations per day/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/matched viirs detections per utc day/i).length).toBeGreaterThan(0);
+  });
+
+  it("searches the map from the overview", async () => {
+    const fetchMock = installFetchMock({
+      dashboard: DASHBOARD,
+      analytics: ANALYTICS,
+    });
+    renderApp("/");
+
+    const input = await screen.findByLabelText(/search the overview map/i);
+    fireEvent.change(input, { target: { value: "Nigeria" } });
+    fireEvent.submit(input.closest("form") as HTMLFormElement);
+
+    await waitFor(() => {
+      const urls = fetchMock.mock.calls.map((call) => String(call[0]));
+      expect(urls.some((url) => url.includes("/api/v1/geo/search"))).toBe(true);
+    });
+    expect(await screen.findByText("Nigeria")).toBeInTheDocument();
+  });
+
   it("toggles the 2D/3D camera without leaving the workspace", async () => {
     renderApp("/");
 

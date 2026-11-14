@@ -13,6 +13,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ActivityTimeline } from "@/components/hermes/ActivityTimeline";
+import { AssociationChart } from "@/components/hermes/AssociationChart";
 import { GlassPanel } from "@/components/hermes/GlassPanel";
 import {
   DEFAULT_OVERVIEW_FILTERS,
@@ -43,7 +44,7 @@ import {
   type FireQuery,
   type GeoPlace,
 } from "@/lib/mapApi";
-import { useDashboardOverview, useSystemStatus } from "@/lib/queries";
+import { useDashboardOverview, useHarmonizedSeries, useSystemStatus } from "@/lib/queries";
 import { formatDateTimeUtc } from "@/lib/time";
 import { useUiStore } from "@/store/ui";
 
@@ -145,6 +146,7 @@ export function OverviewPage() {
   const storedObservations = status?.data.observations_stored ?? 0;
   const syntheticStored = status?.data.synthetic_observations ?? 0;
   const allSynthetic = syntheticStored > 0 && syntheticStored === storedObservations;
+  const harmonized = useHarmonizedSeries(dateRange.start, dateRange.end);
 
   const analytics = useQuery({
     queryKey: ["overview-analytics", dateRange.start, dateRange.end, allSynthetic],
@@ -427,7 +429,7 @@ export function OverviewPage() {
 
             <div className="mt-[12px] grid grid-cols-2 gap-x-4 gap-y-[10px] border-t border-line/[0.07] pt-[10px]">
               <div>
-                <div className="label text-[9px]">Cross-sensor</div>
+                <div className="label text-[9px]">Match pairs</div>
                 <div className="mt-[3px] font-mono text-[15px] text-ink">
                   {formatCount(data?.matches.total)}
                 </div>
@@ -452,7 +454,11 @@ export function OverviewPage() {
               </div>
             </div>
 
-            <p className="mt-[10px] border-t border-line/[0.07] pt-[9px] text-3xs font-light leading-relaxed text-faint">
+            <div className="mt-[10px] border-t border-line/[0.07] pt-[9px]">
+              <AssociationChart series={harmonized.data} loading={harmonized.isLoading} />
+            </div>
+
+            <p className="mt-[8px] border-t border-line/[0.07] pt-[8px] text-3xs font-light leading-relaxed text-faint">
               {data?.note ??
                 "Counts are satellite thermal detections, not fires. FRP sums are reported in MW."}
             </p>
@@ -617,7 +623,7 @@ export function OverviewPage() {
                       </div>
                     </div>
                     <div>
-                      <div className="label text-[9px]">Cross-sensor</div>
+                      <div className="label text-[9px]">Match pairs</div>
                       <div className="mt-[2px] font-mono text-[17px] text-ink">
                         {formatCount(data?.matches.total)}
                       </div>
@@ -635,6 +641,13 @@ export function OverviewPage() {
                       </div>
                     </div>
                   </div>
+                </GlassPanel>
+
+                <GlassPanel
+                  title="Cross-sensor associations"
+                  eyebrow="VIIRS matched to MODIS"
+                >
+                  <AssociationChart series={harmonized.data} loading={harmonized.isLoading} />
                 </GlassPanel>
 
                 <GlassPanel title="Sensor network" eyebrow="MODIS · VIIRS">
