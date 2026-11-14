@@ -96,7 +96,6 @@ def tracked_files() -> list[Path]:
     output = subprocess.check_output(["git", "ls-files"], text=True)
     return [Path(line) for line in output.splitlines() if line and Path(line).is_file()]
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", default="hermes-nasa")
@@ -111,6 +110,13 @@ def main() -> int:
         return 2
     if not args.team:
         print("--team (or VERCEL_TEAM_ID) is required", file=sys.stderr)
+        return 2
+    if not Path("vercel.json").is_file() or not Path("frontend").is_dir():
+        print(
+            "Run this from the repository root: the deployment uploads the whole tree "
+            "described by vercel.json.",
+            file=sys.stderr,
+        )
         return 2
 
     api = VerceApi(token, args.team)
