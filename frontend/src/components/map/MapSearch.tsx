@@ -67,9 +67,24 @@ export function MapSearch({
   }
 
   return (
-    <form ref={containerRef} onSubmit={runSearch} className={`relative ${className ?? ""}`}>
+    <form
+      ref={containerRef}
+      onSubmit={runSearch}
+      className={`pointer-events-auto relative ${className ?? ""}`}
+    >
       <div className="flex h-8 items-center gap-2 rounded-control border border-line/10 bg-panel/80 px-[10px] backdrop-blur-glass">
-        <Search className="size-3.5 shrink-0 text-faint" aria-hidden />
+        {loading ? (
+          <Loader2 className="size-3.5 shrink-0 animate-spin text-faint" aria-hidden />
+        ) : (
+          <button
+            type="submit"
+            aria-label="Search map"
+            title="Search map"
+            className="shrink-0 text-faint transition-colors hover:text-ink"
+          >
+            <Search className="size-3.5" aria-hidden />
+          </button>
+        )}
         <input
           value={term}
           onChange={(event) => setTerm(event.target.value)}
@@ -77,9 +92,7 @@ export function MapSearch({
           aria-label={label}
           className="w-40 bg-transparent text-2xs font-light text-ink placeholder:text-faint focus:outline-none focus-visible:ring-0 sm:w-48"
         />
-        {loading ? (
-          <Loader2 className="size-3 animate-spin text-faint" aria-hidden />
-        ) : term ? (
+        {!loading && term ? (
           <button
             type="button"
             onClick={() => setTerm("")}
