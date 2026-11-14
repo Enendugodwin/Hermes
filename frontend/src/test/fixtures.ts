@@ -13,6 +13,7 @@ import type {
   SystemStatus,
 } from "@/types/api";
 import type { AggregateResponse } from "@/lib/mapApi";
+import type { BootReport } from "@/lib/bootApi";
 import type { CalendarResponse, CalendarDrilldown, CalendarIntelligence } from "@/lib/calendarApi";
 import type { AnalyticsResponse, AnomaliesResponse } from "@/lib/analyticsApi";
 
@@ -284,7 +285,48 @@ export interface MockOptions {
   query?: MockQuery;
   analytics?: AnalyticsResponse;
   anomalies?: AnomaliesResponse;
+  boot?: BootReport;
 }
+
+export const BOOT_REPORT: BootReport = {
+  ok: true,
+  generated_at: "2026-11-14T12:00:00Z",
+  duration_ms: 42.5,
+  stages: [
+    {
+      key: "platform",
+      label: "Activating Hermes",
+      ok: true,
+      detail: "FIREWATCH X 0.1.0 · postgresql · 2.1 ms · 12 modules",
+      metrics: { dialect: "postgresql", modules: 12 },
+      duration_ms: 12.4,
+    },
+    {
+      key: "fireseal",
+      label: "Sealing FireSeal",
+      ok: true,
+      detail: "99 payload blocks · 177,867 pointers · 0 inline payloads · 27 archives",
+      metrics: { blocks: 99, block_pointers: 177867, inline_payloads: 0 },
+      duration_ms: 9.8,
+    },
+    {
+      key: "harmonization",
+      label: "Harmonising sensors",
+      ok: true,
+      detail: "1,204 probable · 388 possible · 41 rejected · 96 events · harmonized-v1",
+      metrics: { probable: 1204, possible: 388, rejected: 41 },
+      duration_ms: 8.1,
+    },
+    {
+      key: "data",
+      label: "Initiating console",
+      ok: true,
+      detail: "177,867 detections · coverage to 2026-11-09 · current · 13 rollup days",
+      metrics: { observations_stored: 177867, freshness: "current" },
+      duration_ms: 12.2,
+    },
+  ],
+};
 
 const EMPTY_GEOMETRY = {
   type: "FeatureCollection" as const,
@@ -523,6 +565,7 @@ export function installFetchMock(options: MockOptions = {}) {
   const calendar = options.calendar?.calendar ?? EMPTY_CALENDAR;
   const analytics = options.analytics ?? EMPTY_ANALYTICS;
   const anomalies = options.anomalies ?? INSUFFICIENT_ANOMALIES;
+  const boot = options.boot ?? BOOT_REPORT;
   const observations: ObservationPage =
     options.query?.observations ?? { items: [], total: 0, limit: 200, offset: 0 };
   const calendarDrilldown = options.calendar?.drilldown ?? EMPTY_DRILLDOWN;
@@ -1049,6 +1092,11 @@ export function installFetchMock(options: MockOptions = {}) {
     if (url.includes("/api/v1/fires/geojson")) return json(EMPTY_GEOMETRY);
     if (url.includes("/api/v1/geo/search")) return json(PLACE_RESULTS);
     if (url.includes("/api/v1/fires/") && mapObservation) return json(mapObservation);
+    if (url.includes("/api/v1/system/boot")) {
+      const stage = new URL(url, "http://localhost").searchParams.get("stage");
+      const stages = stage ? boot.stages.filter((item) => item.key === stage) : boot.stages;
+      return json({ ...boot, ok: stages.every((item) => item.ok), stages });
+    }
     if (url.includes("/api/v1/system/status")) return json(status);
     if (url.includes("/api/v1/system/modules")) return json(MODULES);
     if (url.includes("/api/v1/system/sources")) return json(SOURCES);

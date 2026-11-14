@@ -76,6 +76,9 @@ beforeEach(() => {
   useUiStore.setState({
     dateRange: { preset: "7d", start: "2026-10-29", end: "2026-11-04" },
   });
+  // Page tests exercise the workspace, not the first-load sequence; boot tests
+  // clear this flag to run the real staged screen.
+  window.sessionStorage.setItem("hermes.boot.v1", "done");
 });
 
 afterEach(() => {

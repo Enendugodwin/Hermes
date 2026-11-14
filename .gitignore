@@ -53,3 +53,6 @@ reports/generated/
 # --- sqlite sidecars ------------------------------------------------
 *.db-shm
 *.db-wal
+
+# --- playwright mcp tooling output ------------------------------------------
+.playwright-mcp/

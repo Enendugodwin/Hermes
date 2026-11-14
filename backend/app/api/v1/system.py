@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -17,12 +17,14 @@ from app.core.runtime import STARTED_AT, current_phase
 from app.db.models import DataSource, FireObservation
 from app.db.session import get_session
 from app.schemas.system import (
+    BootReport,
     CapabilityStatus,
     DataStatus,
     ModuleStatusItem,
     SourceOut,
     SystemStatus,
 )
+from app.services.boot import run_boot_checks
 from app.services.data_status import build_data_status
 from app.services.db_health import check_database
 from app.services.sources import FIRMS_SOURCES
@@ -79,6 +81,26 @@ def system_status(
         ),
         modules=[ModuleStatusItem(**module) for module in MODULES],
     )
+
+
+@router.get(
+    "/boot",
+    response_model=BootReport,
+    summary="Sequenced boot probe: platform, FireSeal, harmonization, data",
+)
+def boot_readiness(
+    stage: str | None = Query(
+        None,
+        description="Run one stage only: platform | fireseal | harmonization | data",
+    ),
+    settings: Settings = Depends(get_settings),
+    session: Session = Depends(get_session),
+) -> BootReport:
+    """Real checks the console runs before revealing the workspace."""
+    try:
+        return BootReport(**run_boot_checks(session, settings, stage=stage))
+    except ValueError as exc:
+        raise AppError("bad_request", str(exc)) from exc
 
 
 @router.get(

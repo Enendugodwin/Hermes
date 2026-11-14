@@ -76,3 +76,23 @@ class SourceOut(BaseModel):
     status: Literal["not_ingested", "ok", "error"] = "not_ingested"
     observations: int = 0
     last_observation_at: datetime | None = None
+
+
+class BootStage(BaseModel):
+    """One real check the console runs before it reveals the workspace."""
+
+    key: str
+    label: str
+    ok: bool
+    detail: str
+    metrics: dict[str, object] = Field(default_factory=dict)
+    duration_ms: float
+
+
+class BootReport(BaseModel):
+    """Sequenced boot probe: every stage queries the live platform."""
+
+    ok: bool
+    generated_at: datetime
+    duration_ms: float
+    stages: list[BootStage]
