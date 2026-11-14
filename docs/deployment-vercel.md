@@ -1,49 +1,55 @@
-# Deploying HERMES to Vercel with Supabase
+# Deploying HERMES to Vercel with Neon Postgres
 
-Target URL: **https://hermes-nasa.vercel.app** (the project name `hermes-nasa`; Vercel
-will append a suffix if the name is taken).
+Live deployment: **https://hermes-nasa.vercel.app** (project `hermes-nasa`,
+team `odigiepeters-projects`).
 
-The repository is already wired for Vercel's **Services** model:
+The repository is wired for Vercel's **Services** model:
 
 | Service | Root | What Vercel builds |
 |---|---|---|
 | `frontend` | `frontend/` | Vite production build, SPA deep-link rewrite in `frontend/vercel.json` |
-| `backend` | `backend/` | FastAPI ASGI app from `app.main:app` (Python function, `maxDuration` 60 s) |
+| `backend` | `backend/` | FastAPI ASGI app from `app.main:app` (Python function) |
 
-`vercel.json` routes `/api/*`, `/ready` and `/health` to the backend and everything else to
-the frontend, so the browser keeps calling same-origin `/api/v1/...`.
+`vercel.json` routes `/api/*`, `/ready` and `/health` to the backend and everything else to the
+frontend, so the browser keeps calling same-origin `/api/v1/...`.
 
 ---
 
-## 1. Database connection (important)
+## 1. Database: Neon
 
-Supabase offers two connection strings:
-
-- **Direct** — `db.<ref>.supabase.co:5432`. It is **IPv6-only** on current projects.
-- **Pooler (Supavisor)** — `aws-0-<region>.pooler.supabase.com:6543` (transaction mode) or
-  `:5432` (session mode). This has IPv4 and is what serverless platforms need.
-
-Use the **pooler** string in `DATABASE_URL`. The app tolerates either form:
-
-- a plain `postgresql://` URL is upgraded to the psycopg 3 driver automatically
-  (`postgresql+psycopg://`), and Supabase hosts get `sslmode=require`;
-- a pooler URL switches SQLAlchemy to `NullPool` and disables psycopg's prepared
-  statements, which transaction pooling cannot preserve.
+Use the **pooled** connection string (`-pooler` in the host, port 5432):
 
 ```
-DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+DATABASE_URL=postgresql://<user>:<password>@ep-<endpoint>-pooler.<region>.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 ```
 
-> Rotate the database password before going live if it has been shared anywhere
-> (dashboard → Project Settings → Database → Reset password).
+The app adapts automatically:
+
+- `postgresql://` is upgraded to the psycopg 3 driver;
+- a `-pooler` host switches SQLAlchemy to `NullPool`, disables psycopg's prepared statements and
+  stops sending libpq `options` (Neon's pgbouncer rejects startup parameters);
+- each connection runs `SET TIME ZONE 'UTC'` and `SET search_path TO public`, because pooled
+  sessions arrive without a usable `search_path`.
+
+### IPv4 on Vercel
+
+Neon advertises both A and AAAA records. Vercel Functions are IPv4-only, so libpq occasionally
+dials the AAAA address first and fails with `Cannot assign requested address`. Pin the IPv4
+address in the URL while keeping the hostname for TLS/pooler routing:
+
+```
+...neon.tech/neondb?sslmode=require&channel_binding=require&hostaddr=44.218.206.133
+```
+
+`hostaddr` is one of the endpoint's current A records (`Resolve-DnsName <host> -Type A`). If Neon
+moves the endpoint, refresh this value and redeploy.
 
 ## 2. Bootstrap the database
 
-Run these from `backend/` on a machine that can reach the pooler (set `DATABASE_URL`
-first). They create the schema, the source registry and the operator account:
+Run from `backend/` (any machine that can reach Neon):
 
 ```powershell
-$env:DATABASE_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres"
+$env:DATABASE_URL="postgresql://neondb_owner:<password>@ep-<endpoint>-pooler.<region>.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 ..\.venv\Scripts\python -m alembic upgrade head
 ..\.venv\Scripts\python -m scripts.seed_sources
@@ -51,58 +57,52 @@ $env:DATABASE_URL="postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.
 #   omit --password to be prompted (recommended: it stays out of shell history)
 ```
 
-Optional — copy the local dataset (177k detections, ~24 MB) into Supabase:
+Seeding and the admin script are idempotent. The current deployment was bootstrapped this way and
+carries **333,441 detections**, **182 FireSeal payload blocks**, **7,224 cross-sensor matches** and
+**3,056 events** copied from the local store.
+
+To copy data from another PostgreSQL (schema first, then data):
 
 ```powershell
-pg_dump --data-only --no-owner --no-privileges --exclude-table=alembic_version `
-  -h 127.0.0.1 -U postgres firewatch > firewatch-data.sql
-psql "$env:DATABASE_URL" -f firewatch-data.sql
+pg_dump -h 127.0.0.1 -U postgres firewatch --data-only --no-owner --no-privileges `
+  --exclude-table=alembic_version --exclude-table=users --exclude-table=auth_sessions `
+  --exclude-table=app_settings -f neon_data.sql
+psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f neon_data.sql
 ```
 
-Only the data is dumped; the schema is created by Alembic in the step above. Re-run
-`alembic upgrade head` afterwards and restart any running API.
+`-1` makes the restore all-or-nothing: a foreign-key mismatch rolls back cleanly instead of leaving
+half a dataset. If the target already holds seeded `data_sources`, delete them first so the dump's
+ids can be restored.
 
 ## 3. Environment variables (Vercel → Project → Settings → Environment Variables)
 
 | Name | Value | Notes |
 |---|---|---|
-| `DATABASE_URL` | pooler URL from step 1 | required |
-| `ENVIRONMENT` | `production` | enables production behaviour and hides dev affordances |
-| `CORS_ORIGINS` | `https://hermes-nasa.vercel.app` | same origin, but keeps cookies/preflights explicit |
-| `FIRMS_MAP_KEY` | your NASA key | only needed if ingestion runs from the deployment |
+| `DATABASE_URL` | Neon pooled URL (+ `hostaddr`) | required |
+| `ENVIRONMENT` | `production` | production behaviour, no dev affordances |
+| `CORS_ORIGINS` | `https://hermes-nasa.vercel.app` | |
 | `LOCAL_DATA_DIRECTORY` | `/tmp/data` | function filesystems are read-only except `/tmp` |
-| `LOG_JSON` | `true` | structured logs in Vercel's log view |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | not used automatically; create the admin with the script |
+| `LOG_JSON` | `true` | structured logs in Vercel |
 
-Do **not** commit `.env` or paste the key into `vercel.json`.
+Never commit `.env` or credentials.
 
-## 4. Import the project
+## 4. Deploy from this machine (no Git connection)
 
-Vercel's API is not reachable from some networks (the CLI fails with
-`ETIMEDOUT api.vercel.com`), so the reliable path is the dashboard **or** the
-local source-deployment script:
+Vercel's API host is blocked on some networks. This project deploys from local source through the
+platform API, which the script handles (including transient retries):
 
 ```powershell
-$env:VERCEL_TOKEN = "<token>"
-$env:VERCEL_API_IP = "64.239.123.129"   # only if api.vercel.com is blocked
-python -m scripts.deploy_vercel --project hermes-nasa --team <team-id>
+# from the repository root
+$env:VERCEL_TOKEN  = "<token>"
+$env:VERCEL_API_IP = "64.239.123.129"   # only when api.vercel.com is blackholed
+python backend\scripts\deploy_vercel.py --project hermes-nasa --team <team-id>
 ```
 
-Dashboard alternative:
+The script uploads every `git ls-files` path (ignored files such as `.env`, `.venv`,
+`node_modules`, `data/` are excluded), creates a production deployment and waits for the build.
 
-1. <https://vercel.com/new> → **Import Git Repository** → `Enendugodwin/Hermes`.
-2. Project name: `hermes-nasa`.
-3. Framework preset: **Other** — `vercel.json` defines both services.
-4. Add the environment variables above to **Production** (and Preview if wanted).
-5. **Deploy**. First build installs `backend/requirements.txt` for the function and runs
-   `npm ci && npm run build` inside `frontend/`.
-
-CLI alternative once the API is reachable:
-
-```powershell
-npx vercel link      # choose the hermes-nasa project
-npx vercel --prod
-```
+Environment-variable changes require a **new deployment**; redeploying the previous one picks them
+up without re-uploading files.
 
 ## 5. Verify
 
@@ -111,18 +111,25 @@ curl https://hermes-nasa.vercel.app/ready
 curl https://hermes-nasa.vercel.app/api/v1/system/boot
 ```
 
-Open the site: the first-load sequence runs the four live checks (platform, FireSeal,
-harmonization, data) and only reveals the workspace when all pass. Then sign in at
-`/login` with the admin created in step 2.
+Expected (current deployment):
+
+```
+[platform] ok=True : FIREWATCH X 0.1.0 · postgresql · ~44 ms · 12 modules
+[fireseal] ok=True : 182 payload blocks · 333,441 pointers · 0 inline payloads
+[harmonization] ok=True : 326 probable · 2,047 possible · 4,851 rejected · 3,056 events · assoc-v1
+[data] ok=True : 333,441 detections · coverage to 2026-11-14 · delayed · 13 rollup days
+```
+
+Then open the site: the first-load sequence runs those four live checks and reveals the workspace
+only when all pass. Sign in at `/login`.
 
 ## 6. Limits worth knowing on serverless
 
-- **No bulk ingestion in the function.** FIRMS backfills are long-running and write tens of
-  thousands of rows; run them locally or on a worker against the same Supabase database.
-  The API stays read/query + small admin writes.
+- **No bulk ingestion in the function.** FIRMS backfills are long-running; run them locally or on a
+  worker against the same database. The deployed API is read/query plus small admin writes.
 - **Ephemeral disk.** FireSeal archive exports written under `/tmp/data` disappear with the
-  instance. Durable provenance exports belong in R2/S3 (the storage settings already exist).
-- **Function size.** `backend/requirements.txt` includes Polars, DuckDB and ReportLab; if a
-  build exceeds the function bundle limit, move the API to a container host and keep
-  Vercel for the frontend (`VITE_API_BASE_URL` then points at the API host).
-- **Cold starts.** The boot probe tolerates a slow first request; `maxDuration` is 60 s.
+  instance; durable provenance belongs in object storage.
+- **Function size.** `backend/requirements.txt` includes Polars, DuckDB and ReportLab; if a build
+  ever exceeds the bundle limit, move the API to a container host and keep Vercel for the frontend.
+- **Pooled connections.** Keep the pooler endpoint for the app; use the unpooled endpoint for
+  long-running migrations if a session-level command is rejected.
