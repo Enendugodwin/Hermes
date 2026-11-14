@@ -9,11 +9,31 @@
 export const OSM_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 export const GIBS_TILES =
   "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/500m/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg";
+export const ESRI_IMAGERY_TILES =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+export const ESRI_LABELS_TILES =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+
+export const ESRI_IMAGERY_ATTRIBUTION =
+  "Imagery \u00a9 Esri, Maxar, Earthstar Geographics";
+export const ESRI_LABELS_ATTRIBUTION = "Place names \u00a9 Esri";
+
+/** Transparent 1x1 tile used when a theme has no labels overlay. */
+const BLANK_TILE =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
 export const BASEMAP_SOURCE = "basemap";
 export const BASEMAP_LAYER = "basemap";
+export const LABELS_SOURCE = "labels";
+export const LABELS_LAYER = "labels";
 
-export type MapThemeId = "satellite" | "terrain" | "orbital" | "paper" | "daylight";
+export type MapThemeId =
+  | "satellite"
+  | "bluemarble"
+  | "terrain"
+  | "orbital"
+  | "paper"
+  | "daylight";
 
 export interface MapTheme {
   id: MapThemeId;
@@ -27,6 +47,13 @@ export interface MapTheme {
   tiles: string[];
   attribution: string;
   maxzoom: number;
+  /** Optional transparent labels/boundaries layer drawn above the imagery. */
+  labels?: {
+    tiles: string[];
+    attribution: string;
+    opacity: number;
+    maxzoom: number;
+  };
   basemap: {
     opacity: number;
     saturation: number;
@@ -66,25 +93,61 @@ const HEAT = {
 };
 
 /**
- * Satellite is the default: NASA GIBS Blue Marble gives Hermes an authentic
- * Earth-observation field without an API key. The lighter themes remain for
- * daylight and print work.
+ * Satellite is the default: detailed Esri World Imagery with a transparent
+ * place-name and boundary overlay, so regions and cities are readable at every
+ * zoom. NASA GIBS Blue Marble remains available as its own theme.
  */
 export const MAP_THEMES: Record<MapThemeId, MapTheme> = {
   satellite: {
     id: "satellite",
     label: "Satellite",
-    hint: "NASA Blue Marble imagery, dark mission field",
+    hint: "Detailed imagery with country, region and city labels",
+    background: "#080C11",
+    tiles: [ESRI_IMAGERY_TILES],
+    attribution: `${ESRI_IMAGERY_ATTRIBUTION} \u00b7 ${ESRI_LABELS_ATTRIBUTION}`,
+    maxzoom: 19,
+    labels: {
+      tiles: [ESRI_LABELS_TILES],
+      attribution: ESRI_LABELS_ATTRIBUTION,
+      opacity: 0.92,
+      maxzoom: 19,
+    },
+    basemap: {
+      opacity: 1,
+      saturation: 0.05,
+      contrast: 0.03,
+      brightnessMin: 0,
+      brightnessMax: 0.98,
+      hueRotate: 0,
+    },
+    fire: FIRE,
+    sensor: SENSOR,
+    stroke: "rgba(232,237,242,0.55)",
+    strokeWidth: 1.1,
+    cellOpacity: 0.72,
+    heat: HEAT,
+    swatch: ["#0B1118", "#40586B"],
+  },
+  bluemarble: {
+    id: "bluemarble",
+    label: "Blue Marble",
+    hint: "NASA GIBS global imagery, with place labels",
     background: "#080C11",
     tiles: [GIBS_TILES],
     attribution: "Imagery \u00a9 NASA EOSDIS GIBS",
     maxzoom: 8,
-    basemap: {
+    labels: {
+      tiles: [ESRI_LABELS_TILES],
+      attribution: ESRI_LABELS_ATTRIBUTION,
       opacity: 0.92,
-      saturation: 0.7,
-      contrast: 0.06,
-      brightnessMin: 0.02,
-      brightnessMax: 0.86,
+      maxzoom: 8,
+    },
+    basemap: {
+      opacity: 0.95,
+      saturation: 0.05,
+      contrast: 0.03,
+      brightnessMin: 0,
+      brightnessMax: 0.92,
       hueRotate: 0,
     },
     fire: FIRE,
@@ -218,6 +281,7 @@ export const DEFAULT_THEME: MapThemeId = "satellite";
 
 export const THEME_ORDER: MapThemeId[] = [
   "satellite",
+  "bluemarble",
   "terrain",
   "orbital",
   "paper",
@@ -261,6 +325,28 @@ export function buildBasemapLayer(theme: MapTheme): LayerSpecification {
       "raster-brightness-min": theme.basemap.brightnessMin,
       "raster-brightness-max": theme.basemap.brightnessMax,
       "raster-hue-rotate": theme.basemap.hueRotate,
+    },
+  };
+}
+
+/** Transparent country/region/city labels drawn over satellite imagery. */
+export function buildLabelsSource(theme: MapTheme) {
+  return {
+    type: "raster" as const,
+    tiles: theme.labels?.tiles ?? [BLANK_TILE],
+    tileSize: 256,
+    maxzoom: theme.labels?.maxzoom ?? theme.maxzoom,
+    attribution: theme.labels?.attribution,
+  };
+}
+
+export function buildLabelsLayer(theme: MapTheme): LayerSpecification {
+  return {
+    id: LABELS_LAYER,
+    type: "raster",
+    source: LABELS_SOURCE,
+    paint: {
+      "raster-opacity": theme.labels?.opacity ?? 0,
     },
   };
 }

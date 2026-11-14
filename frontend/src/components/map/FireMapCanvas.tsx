@@ -19,9 +19,13 @@ import {
   BASEMAP_LAYER,
   BASEMAP_SOURCE,
   EMPTY_COLLECTION,
+  LABELS_LAYER,
+  LABELS_SOURCE,
   MAP_THEMES,
   buildBasemapLayer,
   buildBasemapSource,
+  buildLabelsLayer,
+  buildLabelsSource,
   buildMapStyle,
 } from "./mapStyle";
 
@@ -45,6 +49,20 @@ export function applyMapTheme(
     for (const [key, value] of Object.entries(paint)) {
       map.setPaintProperty(BASEMAP_LAYER, key, value);
     }
+  }
+
+  if (map.getLayer(LABELS_LAYER)) {
+    if (updateTiles) {
+      const labelsSource = map.getSource(LABELS_SOURCE) as
+        | { setTiles?: (tiles: string[]) => void }
+        | undefined;
+      labelsSource?.setTiles?.(buildLabelsSource(theme).tiles);
+    }
+    map.setPaintProperty(
+      LABELS_LAYER,
+      "raster-opacity",
+      theme.labels?.opacity ?? 0,
+    );
   }
 
   if (map.getLayer("fire-heat")) {
@@ -185,6 +203,8 @@ export function FireMapCanvas({
 
       map.addSource(BASEMAP_SOURCE, buildBasemapSource(MAP_THEMES[latest.current.theme]));
       map.addLayer(buildBasemapLayer(MAP_THEMES[latest.current.theme]));
+      map.addSource(LABELS_SOURCE, buildLabelsSource(MAP_THEMES[latest.current.theme]));
+      map.addLayer(buildLabelsLayer(MAP_THEMES[latest.current.theme]));
 
       map.addSource("fires", {
         type: "geojson",

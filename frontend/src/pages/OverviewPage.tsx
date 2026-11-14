@@ -709,7 +709,7 @@ export function OverviewPage() {
       {/* Attribution and the honesty contract, kept in the reading order. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 hidden justify-center pb-[2px] lg:flex">
         <p className="pointer-events-auto rounded-tag bg-canvas/60 px-2 py-[2px] font-mono text-3xs text-faint">
-          Imagery © NASA EOSDIS GIBS · Detections © NASA FIRMS · thermal anomalies, not confirmed
+          {theme.attribution} · Detections © NASA FIRMS · thermal anomalies, not confirmed
           fires
         </p>
       </div>

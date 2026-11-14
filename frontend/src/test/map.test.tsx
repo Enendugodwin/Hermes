@@ -13,7 +13,14 @@ import {
 } from "@/components/map/fireLayers";
 import type { FireCell } from "@/lib/mapApi";
 import type { Observation } from "@/types/api";
-import { DEFAULT_THEME, MAP_THEMES, THEME_ORDER, buildBasemapLayer, buildMapStyle } from "@/components/map/mapStyle";
+import {
+  DEFAULT_THEME,
+  MAP_THEMES,
+  THEME_ORDER,
+  buildBasemapLayer,
+  buildLabelsLayer,
+  buildMapStyle,
+} from "@/components/map/mapStyle";
 
 // MapLibre needs WebGL; the layer/expression logic above is pure and the page is
 // verified with a stub map so the UI contract can be tested without a GPU.
@@ -162,16 +169,24 @@ describe("map layer helpers", () => {
     expect(dark).toContain("#FFB45C");
   });
 
-  it("defaults to NASA satellite imagery and keeps a dark option", () => {
+  it("defaults to detailed satellite imagery with place labels", () => {
     expect(DEFAULT_THEME).toBe("satellite");
     expect(THEME_ORDER).toContain("orbital");
+    expect(THEME_ORDER).toContain("bluemarble");
 
     const satelliteBasemap = buildBasemapLayer(MAP_THEMES.satellite).paint as Record<string, unknown>;
     const lightBasemap = buildBasemapLayer(MAP_THEMES.daylight).paint as Record<string, unknown>;
     const darkBasemap = buildBasemapLayer(MAP_THEMES.orbital).paint as Record<string, unknown>;
+    const labels = buildLabelsLayer(MAP_THEMES.satellite).paint as Record<string, unknown>;
 
-    expect(MAP_THEMES.satellite.tiles[0]).toContain("gibs.earthdata.nasa.gov");
-    expect(satelliteBasemap["raster-opacity"]).toBeGreaterThan(0.5);
+    expect(MAP_THEMES.satellite.tiles[0]).toContain("arcgisonline.com");
+    expect(MAP_THEMES.bluemarble.tiles[0]).toContain("gibs.earthdata.nasa.gov");
+    expect(MAP_THEMES.satellite.labels?.tiles[0]).toContain(
+      "World_Boundaries_and_Places",
+    );
+    expect(MAP_THEMES.satellite.maxzoom).toBeGreaterThanOrEqual(18);
+    expect(labels["raster-opacity"]).toBeGreaterThan(0.5);
+    expect(satelliteBasemap["raster-opacity"]).toBe(1);
     expect(lightBasemap["raster-opacity"]).toBe(1);
     expect(lightBasemap["raster-brightness-max"]).toBe(1);
     expect(darkBasemap["raster-brightness-max"]).toBeLessThan(0.5);

@@ -481,8 +481,8 @@ export function FireMapPage() {
 
       <p className="mt-2 text-2xs font-light leading-relaxed text-faint">
         Detections are thermal anomalies, not fires. Below zoom {AGGREGATE_ZOOM} the map shows
-        gridded counts; each dot is then a number of detections, not a single fire. Basemap tiles
-        © OpenStreetMap contributors; detections © NASA FIRMS.
+        gridded counts; each dot is then a number of detections, not a single fire. Imagery and
+        place labels © their respective providers; detections © NASA FIRMS.
       </p>
     </div>
   );

@@ -11,7 +11,7 @@ exposes all of it through a dark, map-first analytical console.
 > [!NOTE]
 > **GUI status: Hermes design system, milestone 1.** The backend, API contract and data
 > pipeline are unchanged. The Overview is now a full-bleed map-first workspace with floating
-> glass panels, NASA GIBS satellite imagery, a temporal explorer, 2D/3D camera control and a
+> glass panels, detailed satellite imagery with place labels, a temporal explorer, 2D/3D camera control and a
 > mobile panel sheet. The remaining workspaces still use the previous shell and are being
 > migrated onto the same tokens and components.
 
@@ -50,7 +50,7 @@ exposes all of it through a dark, map-first analytical console.
 
 ### Hermes overview (demo fixture)
 
-![Hermes Overview: full-bleed NASA GIBS imagery, floating mission panels, sensor network, temporal explorer and honest synthetic-data labelling](docs/screenshots/hermes-overview.png)
+![Hermes Overview: full-bleed satellite imagery, place labels, floating mission panels, sensor network, temporal explorer and honest synthetic-data labelling](docs/screenshots/hermes-overview.png)
 
 > The captures below show the pre-Hermes console. New Hermes captures will replace them as the
 > remaining workspaces are migrated.

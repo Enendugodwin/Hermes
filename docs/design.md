@@ -64,7 +64,7 @@ The Overview is a map-first workspace:
 
 ## Map language
 
-- Default basemap is NASA GIBS Blue Marble (`BlueMarble_NextGeneration`), attributed in the UI.
+- Default basemap is detailed Esri World Imagery with a transparent Esri boundaries/place-name overlay, so countries, regions and cities stay readable. NASA GIBS Blue Marble remains available as its own theme. Both are attributed in the UI.
 - Fire layers: gridded density cells below zoom 6, individual detections at closer zooms.
 - Cell colour is density, not FRP, so one intense detection cannot recolour a whole cell.
 - MODIS and VIIRS have distinct sensor outline colours; severity uses the fire ramp.
