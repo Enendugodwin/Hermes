@@ -52,3 +52,29 @@ def test_secrets_are_considered_present_when_supplied() -> None:
 
     assert settings.firms_configured is True
     assert settings.ai_configured is True
+
+def test_managed_postgres_url_is_normalized() -> None:
+    """A Supabase-style URL gets the psycopg driver and TLS without editing."""
+    settings = Settings(
+        database_url="postgresql://postgres:secret@db.abc.supabase.co:5432/postgres",
+        _env_file=None,
+    )  # type: ignore[call-arg]
+
+    assert settings.database_url.startswith("postgresql+psycopg://")
+    assert "sslmode=require" in settings.database_url
+    assert settings.is_postgres is True
+    assert settings.uses_pooler is False
+
+
+def test_pooler_url_is_recognised() -> None:
+    settings = Settings(
+        database_url=(
+            "postgres://postgres.abc:pw@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
+        ),
+        _env_file=None,
+    )  # type: ignore[call-arg]
+
+    assert settings.uses_pooler is True
+    assert settings.is_postgres is True
+    assert settings.database_url.startswith("postgresql+psycopg://")
+    assert "sslmode=require" in settings.database_url

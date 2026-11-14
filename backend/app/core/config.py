@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 from typing import Annotated, Literal
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -137,10 +137,43 @@ class Settings(BaseSettings):
             return [item.strip() for item in text.split(",") if item.strip()]
         return value
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _normalize_database_url(cls, value: object) -> object:
+        """Accept managed-provider URLs as handed out.
+
+        Supabase, Render and Fly all print ``postgresql://`` URLs. The project
+        ships psycopg 3, so the driver is made explicit, and Supabase hosts get
+        ``sslmode=require`` because they reject unencrypted connections.
+        """
+        if not isinstance(value, str):
+            return value
+        text = value.strip()
+        if not text:
+            return value
+        if text.startswith("postgres://"):
+            text = "postgresql://" + text[len("postgres://") :]
+        if text.startswith("postgresql://"):
+            text = "postgresql+psycopg://" + text[len("postgresql://") :]
+
+        parts = urlsplit(text)
+        host = (parts.hostname or "").lower()
+        if host.endswith("supabase.co") or host.endswith("supabase.com"):
+            query = dict(parse_qsl(parts.query, keep_blank_values=True))
+            query.setdefault("sslmode", "require")
+            text = urlunsplit(parts._replace(query=urlencode(query)))
+        return text
+
     # --- derived helpers -----------------------------------------------------
     @property
     def database_dialect(self) -> str:
         return urlsplit(self.database_url).scheme.split("+")[0]
+
+    @property
+    def uses_pooler(self) -> bool:
+        """True for a Supavisor/pgbouncer endpoint (transaction pooling)."""
+        parts = urlsplit(self.database_url)
+        return parts.port == 6543 or "pooler.supabase.com" in (parts.hostname or "").lower()
 
     @property
     def is_postgres(self) -> bool:

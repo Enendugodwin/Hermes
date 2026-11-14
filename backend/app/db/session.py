@@ -6,6 +6,7 @@ readiness) even when the database server is unreachable.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from functools import lru_cache
@@ -13,8 +14,14 @@ from typing import Any
 
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
+
+
+def _serverless() -> bool:
+    """True when the process is a short-lived function invocation."""
+    return bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
 
 
 @lru_cache(maxsize=1)
@@ -31,15 +38,25 @@ def get_engine() -> Engine:
     else:
         # Timestamps are stored as timestamptz; pin the session time zone to UTC
         # so API responses never depend on the server's local zone.
-        kwargs["connect_args"] = {
+        connect_args: dict[str, object] = {
             # A runaway analytical query must fail instead of pinning a worker and
             # exhausting the device; 60 s is above every measured read (<= 0.25 s)
             # and above an incremental rollup refresh.
             "options": "-c timezone=UTC -c statement_timeout=60000"
         }
-        kwargs["pool_size"] = settings.database_pool_size
-        kwargs["pool_timeout"] = settings.database_pool_timeout
-        kwargs["pool_recycle"] = 1800
+        if settings.uses_pooler:
+            # Transaction pooling (Supavisor/pgbouncer) cannot keep server-side
+            # prepared statements between checkouts; psycopg 3 disables them.
+            connect_args["prepare_threshold"] = None
+        kwargs["connect_args"] = connect_args
+        if _serverless() or settings.uses_pooler:
+            # One connection per invocation: a pooled connection would outlive
+            # the function and be dropped by the platform anyway.
+            kwargs["poolclass"] = NullPool
+        else:
+            kwargs["pool_size"] = settings.database_pool_size
+            kwargs["pool_timeout"] = settings.database_pool_timeout
+            kwargs["pool_recycle"] = 1800
     engine = create_engine(settings.database_url, **kwargs)
     if settings.is_sqlite:
         _configure_sqlite(engine)
