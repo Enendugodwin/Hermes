@@ -56,19 +56,32 @@ class VerceApi:
         self.ip = ip
 
     def call(self, method: str, path: str, body: bytes | None = None, headers: dict | None = None):
-        conn = _PinnedConnection(self.host, self.ip, timeout=180)
-        head = {"Authorization": f"Bearer {self.token}", "User-Agent": "hermes-deploy"}
-        head.update(headers or {})
-        separator = "&" if "?" in path else "?"
-        conn.request(method, f"{path}{separator}teamId={self.team}", body=body, headers=head)
-        response = conn.getresponse()
-        payload = response.read()
-        conn.close()
-        try:
-            parsed = json.loads(payload) if payload else None
-        except json.JSONDecodeError:
-            parsed = payload[:300]
-        return response.status, parsed
+        last_error: Exception | None = None
+        for attempt in range(1, 4):
+            try:
+                conn = _PinnedConnection(self.host, self.ip, timeout=180)
+                head = {"Authorization": f"Bearer {self.token}", "User-Agent": "hermes-deploy"}
+                head.update(headers or {})
+                separator = "&" if "?" in path else "?"
+                conn.request(
+                    method, f"{path}{separator}teamId={self.team}", body=body, headers=head
+                )
+                response = conn.getresponse()
+                payload = response.read()
+                status = response.status
+                conn.close()
+                if status in {429, 500, 502, 503, 504} and attempt < 3:
+                    time.sleep(2 * attempt)
+                    continue
+                try:
+                    parsed = json.loads(payload) if payload else None
+                except json.JSONDecodeError:
+                    parsed = payload[:300]
+                return status, parsed
+            except (http.client.HTTPException, OSError, TimeoutError) as exc:
+                last_error = exc
+                time.sleep(2 * attempt)
+        raise RuntimeError(f"{method} {path} failed after retries: {last_error}")
 
     def upload(self, data: bytes, sha: str) -> tuple[int, object]:
         return self.call(
