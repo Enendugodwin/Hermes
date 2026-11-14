@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from dataclasses import replace
 from datetime import date
 from typing import Any
 
@@ -17,7 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import FireObservation, WatchedAsset
-from app.services.observation_queries import ObservationFilters
+from app.services.observation_queries import BBox, ObservationFilters
 
 EARTH_RADIUS_KM = 6371.0088
 
@@ -34,6 +35,20 @@ def list_assets(session: Session) -> list[WatchedAsset]:
     return list(session.scalars(select(WatchedAsset).order_by(WatchedAsset.name)).all())
 
 
+def _radius_bbox(latitude: float, longitude: float, radius_km: float) -> BBox:
+    """A latitude/longitude box that safely contains the search circle."""
+    lat_delta = radius_km / 111.32
+    cos_lat = max(math.cos(math.radians(latitude)), 0.01)
+    lon_delta = radius_km / (111.32 * cos_lat)
+    south = max(-90.0, latitude - lat_delta)
+    north = min(90.0, latitude + lat_delta)
+    west = max(-180.0, longitude - lon_delta)
+    east = min(180.0, longitude + lon_delta)
+    if west >= east:  # pole / antimeridian fallback
+        west, east = -180.0, 180.0
+    return BBox(west=west, south=south, east=east, north=north)
+
+
 def screen_assets(
     session: Session,
     filters: ObservationFilters,
@@ -43,17 +58,32 @@ def screen_assets(
     max_observations: int = 20000,
 ) -> dict[str, Any]:
     assets = list_assets(session)[:max_assets]
-    observations = list(
-        session.scalars(
-            filters.apply(select(FireObservation)).execution_options(stream_results=True)
-        ).all()[:max_observations]
-    )
-
     results = []
+    scanned_total = 0
+    truncated = False
+
     for asset in assets:
+        # Query a bounding box around the asset rather than scanning a capped
+        # global slice. The exact haversine check then removes box corners.
+        asset_filters = replace(
+            filters,
+            bbox=_radius_bbox(asset.latitude, asset.longitude, radius_km),
+        )
+        candidates = list(
+            session.scalars(
+                asset_filters.apply(select(FireObservation)).execution_options(
+                    stream_results=True
+                )
+            ).all()
+        )
+        if len(candidates) > max_observations:
+            candidates = candidates[:max_observations]
+            truncated = True
+        scanned_total += len(candidates)
+
         nearby = []
         nearest: dict[str, Any] | None = None
-        for row in observations:
+        for row in candidates:
             distance = haversine_km(asset.latitude, asset.longitude, row.latitude, row.longitude)
             if distance > radius_km:
                 continue
@@ -91,8 +121,8 @@ def screen_assets(
         "assets": results,
         "asset_count": len(assets),
         "radius_km": radius_km,
-        "observations_scanned": len(observations),
-        "truncated": len(observations) >= max_observations,
+        "observations_scanned": scanned_total,
+        "truncated": truncated,
         "note": (
             "Screening uses the assets registered here. No population or infrastructure "
             "dataset is bundled, so this is proximity to detections, not a risk score."
