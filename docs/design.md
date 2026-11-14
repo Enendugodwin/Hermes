@@ -89,6 +89,7 @@ indicators, 700ms camera pitch. All motion is disabled under `prefers-reduced-mo
 | Popover | Glass card, 6px radius, lift shadow |
 | Sensor row | Colour dot, name, count, share bar, reporting state |
 | Temporal explorer | SVG area line, active days, peak day, period presets |
+| Association chart | Three outcome lines (probable/possible/rejected), shared axis, hover tooltip, coverage note |
 
 ## Constraints
 

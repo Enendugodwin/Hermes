@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingBlock } from "@/components/ui/LoadingCue";
 import { PageHeader } from "@/components/ui/ModuleStatus";
 import { Panel, StatTile } from "@/components/ui/Panel";
+import { CrossSensorLineChart } from "@/components/hermes/CrossSensorLineChart";
 import { Download } from "lucide-react";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { SyntheticBanner } from "@/components/ui/SyntheticBanner";
@@ -218,8 +219,8 @@ export function HarmonizationPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Firewatch X / Sensor Intelligence"
-        title={module?.label ?? navItem?.label ?? "Sensor Intelligence"}
+        eyebrow="HERMES / Harmonisation"
+        title={navItem?.label ?? module?.label ?? "Harmonisation Centre"}
         description="MODIS and VIIRS normalization, cross-sensor association and estimated event grouping. Raw observations are preserved and never merged."
         status={module?.status ?? "ready"}
         phase={module?.phase ?? "Phase 3"}
@@ -359,6 +360,12 @@ export function HarmonizationPage() {
                 </div>
               }
             >
+              <div className="border-b border-line/[0.07] px-[22px] pb-[12px] pt-[14px]">
+                <CrossSensorLineChart
+                  series={harmonized.data}
+                  loading={harmonized.isLoading}
+                />
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>

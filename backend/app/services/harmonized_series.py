@@ -83,19 +83,50 @@ def harmonized_daily(
     ).all()
     matched = {_day_key(row[0]): int(row[1]) for row in matched_rows}
 
+    # Cross-sensor outcomes per day. Rejected pairs are shown so the chart can
+    # separate candidates that failed the threshold from probable/possible
+    # associations, but only probable + possible are subtracted from the
+    # harmonised total.
+    pairs_rows = session.execute(
+        select(
+            ObservationMatch.match_day,
+            ObservationMatch.match_status,
+            func.count(),
+        )
+        .join(b, ObservationMatch.observation_a_id == b.id)
+        .where(
+            b.is_synthetic == synthetic,
+            ObservationMatch.match_day >= start,
+            ObservationMatch.match_day <= end,
+        )
+        .group_by(ObservationMatch.match_day, ObservationMatch.match_status)
+    ).all()
+    pairs: dict[date, dict[str, int]] = {}
+    for row in pairs_rows:
+        pairs.setdefault(_day_key(row[0]), {})[str(row[1])] = int(row[2])
+
     days: list[dict[str, Any]] = []
     totals: dict[str, float | int] = {
         "modis": 0,
         "viirs": 0,
         "raw": 0,
         "matched_viirs": 0,
+        "matches": 0,
+        "matches_probable": 0,
+        "matches_possible": 0,
+        "matches_rejected": 0,
         "harmonized": 0,
     }
-    for day in sorted(set(raw) | set(matched)):
+    for day in sorted(set(raw) | set(matched) | set(pairs)):
         modis = raw.get(day, {}).get("MODIS", 0)
         viirs = raw.get(day, {}).get("VIIRS", 0)
         paired = min(matched.get(day, 0), viirs)
         harmonized = modis + viirs - paired
+        by_status = pairs.get(day, {})
+        probable = by_status.get("probable", 0)
+        possible = by_status.get("possible", 0)
+        rejected = by_status.get("rejected", 0)
+        match_pairs = probable + possible
         days.append(
             {
                 "date": day.isoformat(),
@@ -103,6 +134,10 @@ def harmonized_daily(
                 "viirs": viirs,
                 "raw": modis + viirs,
                 "matched_viirs": paired,
+                "matches": match_pairs,
+                "matches_probable": probable,
+                "matches_possible": possible,
+                "matches_rejected": rejected,
                 "harmonized": harmonized,
                 "reduction_ratio": round(paired / viirs, 4) if viirs else 0.0,
             }
@@ -111,9 +146,14 @@ def harmonized_daily(
         totals["viirs"] += viirs
         totals["raw"] += modis + viirs
         totals["matched_viirs"] += paired
+        totals["matches"] += match_pairs
+        totals["matches_probable"] += probable
+        totals["matches_possible"] += possible
+        totals["matches_rejected"] += rejected
         totals["harmonized"] += harmonized
 
     days_with_matches = sum(1 for day in days if day["matched_viirs"] > 0)
+    days_with_pairs = sum(1 for day in days if day["matches"] > 0)
     totals["reduction_ratio"] = (
         round(totals["matched_viirs"] / totals["viirs"], 4) if totals["viirs"] else 0.0
     )
@@ -148,6 +188,7 @@ def harmonized_daily(
         "coverage": {
             "days": len(days),
             "days_with_matches": days_with_matches,
+            "days_with_match_pairs": days_with_pairs,
             "association_scope_note": (
                 "Associations are produced by scoped harmonisation runs; they are not "
                 "computed for every stored day."

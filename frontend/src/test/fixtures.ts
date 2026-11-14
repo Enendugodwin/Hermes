@@ -1062,10 +1062,10 @@ export function installFetchMock(options: MockOptions = {}) {
         definition:
           "harmonized = MODIS + VIIRS - distinct VIIRS detections with at least one probable or possible MODIS association on the same UTC day",
         days: [
-          { date: "2026-10-30", modis: 41, viirs: 379, raw: 420, matched_viirs: 12, harmonized: 408, reduction_ratio: 0.0317 },
+          { date: "2026-10-30", modis: 41, viirs: 379, raw: 420, matched_viirs: 12, matches: 3, matches_probable: 1, matches_possible: 2, matches_rejected: 2, harmonized: 408, reduction_ratio: 0.0317 },
         ],
-        totals: { modis: 41, viirs: 379, raw: 420, matched_viirs: 12, harmonized: 408, reduction_ratio: 0.0317 },
-        coverage: { days: 1, days_with_matches: 1 },
+        totals: { modis: 41, viirs: 379, raw: 420, matched_viirs: 12, matches: 3, matches_probable: 1, matches_possible: 2, matches_rejected: 2, harmonized: 408, reduction_ratio: 0.0317 },
+        coverage: { days: 1, days_with_matches: 1, days_with_match_pairs: 1 },
         notes: ["Counts are detections, not fires.", "12 VIIRS detections were also seen by MODIS."],
       });
     }

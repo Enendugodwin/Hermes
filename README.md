@@ -52,6 +52,10 @@ exposes all of it through a dark, map-first analytical console.
 
 ![Hermes Overview: full-bleed satellite imagery, place labels, floating mission panels, sensor network, temporal explorer and honest synthetic-data labelling](docs/screenshots/hermes-overview.png)
 
+### Hermes Harmonisation Centre
+
+![Hermes Harmonisation Centre: cross-sensor association outcomes plotted as probable, possible and rejected lines](docs/screenshots/hermes-harmonisation.png)
+
 > The captures below show the pre-Hermes console. New Hermes captures will replace them as the
 > remaining workspaces are migrated.
 

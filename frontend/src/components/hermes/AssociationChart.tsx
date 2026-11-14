@@ -16,9 +16,9 @@ export function AssociationChart({
 }) {
   const points = (series?.days ?? []).map((day) => ({
     date: day.date,
-    value: day.matched_viirs,
+    value: day.matches,
   }));
-  const total = series?.totals.matched_viirs ?? 0;
+  const total = series?.totals.matches ?? 0;
   const coverage = series?.coverage;
 
   return (
@@ -42,7 +42,7 @@ export function AssociationChart({
       )}
 
       <p className="mt-[3px] text-3xs font-light leading-relaxed text-faint">
-        Matched VIIRS detections per UTC day
+        Probable + possible MODIS/VIIRS pairs per UTC day
         {coverage
           ? ` · ${formatCount(coverage.days_with_matches)} of ${formatCount(coverage.days)} days with associations`
           : ""}

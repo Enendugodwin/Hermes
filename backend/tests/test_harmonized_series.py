@@ -21,12 +21,22 @@ def test_series_reconciles_and_subtracts_matched_viirs(
     assert totals["harmonized"] == totals["raw"] - totals["matched_viirs"]
     assert totals["raw"] == loaded_fixture["inserted"]
     assert totals["matched_viirs"] > 0
+    assert totals["matches"] > 0
+    assert totals["matches"] == totals["matches_probable"] + totals["matches_possible"]
+    assert totals["matches_rejected"] >= 0
     assert totals["harmonized"] < totals["raw"]
 
     days = body["days"]
     assert [day["date"] for day in days] == sorted(day["date"] for day in days)
     assert all(day["harmonized"] <= day["raw"] for day in days)
+    assert all(day["matches"] >= 0 for day in days)
+    assert all(
+        day["matches"]
+        == day["matches_probable"] + day["matches_possible"]
+        for day in days
+    )
     assert body["coverage"]["days_with_matches"] > 0
+    assert body["coverage"]["days_with_match_pairs"] > 0
 
     notes = " ".join(body["notes"]).lower()
     assert "not a calibrated fire count" in notes

@@ -107,6 +107,11 @@ export interface HarmonizedDay {
   viirs: number;
   raw: number;
   matched_viirs: number;
+  /** Probable + possible cross-sensor match pairs on this UTC day. */
+  matches: number;
+  matches_probable: number;
+  matches_possible: number;
+  matches_rejected: number;
   harmonized: number;
   reduction_ratio: number;
 }
@@ -123,10 +128,20 @@ export interface HarmonizedSeries {
     viirs: number;
     raw: number;
     matched_viirs: number;
+    /** Probable + possible cross-sensor match pairs over the period. */
+    matches: number;
+    matches_probable: number;
+    matches_possible: number;
+    matches_rejected: number;
     harmonized: number;
     reduction_ratio: number;
   };
-  coverage: { days: number; days_with_matches: number; association_scope_note?: string };
+  coverage: {
+    days: number;
+    days_with_matches: number;
+    days_with_match_pairs?: number;
+    association_scope_note?: string;
+  };
   notes: string[];
 }
 

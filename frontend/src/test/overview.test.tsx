@@ -88,7 +88,7 @@ describe("hermes overview", () => {
     expect(
       await screen.findByLabelText(/cross-sensor associations per day/i),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/matched viirs detections per utc day/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/probable \+ possible modis\/viirs pairs per utc day/i).length).toBeGreaterThan(0);
   });
 
   it("searches the map from the overview", async () => {

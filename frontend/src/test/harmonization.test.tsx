@@ -20,7 +20,7 @@ describe("sensor intelligence (Phase 3)", () => {
     expect(await screen.findByText(/demo data only/i)).toBeInTheDocument();
 
     // Summary tiles reconcile with the API payload.
-    expect(await screen.findByText(/1 probable/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/1 probable/)).length).toBeGreaterThan(0);
     expect(screen.getByText(/2 seen by both sensors/i)).toBeInTheDocument();
 
     // Match table lists a cross-sensor pair and its score.
@@ -56,5 +56,17 @@ describe("sensor intelligence (Phase 3)", () => {
 
     expect(await screen.findByText(/bbox 2\.5, 4, 14\.7, 13\.9/)).toBeInTheDocument();
     expect((await screen.findAllByText(/2026-10-29/)).length).toBeGreaterThan(0);
+  });
+
+  it("plots the daily cross-sensor association series", async () => {
+    installFetchMock({ summary: FIXTURE_SUMMARY, matches: MATCHES, events: EVENTS });
+    renderApp("/harmonization");
+
+    expect(
+      await screen.findByLabelText(/cross-sensor associations per day/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/cross-sensor outcomes \/ utc day/i).length,
+    ).toBeGreaterThan(0);
   });
 });
