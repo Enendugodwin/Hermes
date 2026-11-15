@@ -5,7 +5,6 @@ import { NavLink } from "react-router-dom";
 import { HermesMark } from "@/components/brand/HermesMark";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { NAV_SECTIONS } from "@/config/nav";
-import { useAuthStatus } from "@/lib/authApi";
 import { useSystemStatus } from "@/lib/queries";
 import { useUiStore } from "@/store/ui";
 
@@ -46,9 +45,7 @@ export function Sidebar() {
   const collapsedPref = useUiStore((state) => state.sidebarCollapsed);
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen);
   const toggleCollapsed = useUiStore((state) => state.toggleSidebarCollapsed);
-  const { data: auth } = useAuthStatus();
   const { data: status } = useSystemStatus();
-  const canAdmin = auth?.user?.role === "admin";
 
   const online = status?.database.connected ?? false;
 
@@ -120,9 +117,7 @@ export function Sidebar() {
                 <span className="label text-[9px] tracking-[0.22em]">{section.title}</span>
               </div>
               <ul className="space-y-[1px]">
-                {section.items
-                  .filter((item) => item.key !== "admin" || canAdmin)
-                  .map((item) => {
+                {section.items.map((item) => {
                     const Icon = item.icon;
                     return (
                       <li key={item.key}>
