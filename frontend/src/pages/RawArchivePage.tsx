@@ -1,6 +1,7 @@
 import { Archive, Download, KeyRound, ShieldAlert, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 import { ServiceControls } from "@/components/admin/ServiceControls";
 import { Button } from "@/components/ui/Button";
@@ -8,6 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/ModuleStatus";
 import { DataRow, Panel, StatTile } from "@/components/ui/Panel";
 import { API_BASE_URL, getAdminToken, saveAdminToken } from "@/lib/api";
+import { useAuthStatus } from "@/lib/authApi";
 import {
   previewRunDelete,
   useClearFirmsKey,
@@ -40,6 +42,8 @@ function shiftDays(days: number): string {
 }
 
 export function RawArchivePage() {
+  const navigate = useNavigate();
+  const auth = useAuthStatus();
   const inventory = useRawInventory();
   const exports = useRawExports();
   const createExport = useCreateRawExport();
@@ -213,6 +217,29 @@ export function RawArchivePage() {
       onError: (error) => setNotice(error.message),
     });
   };
+
+  // The portal stays visible in the navigation; it asks for an administrator
+  // session inline instead of bouncing the whole console to the login page.
+  if (auth.data?.user?.role !== "admin") {
+    return (
+      <>
+        <PageHeader
+          eyebrow="HERMES / Administration"
+          title="Admin Portal"
+          description="Ingestion, the FIRMS key, raw payload exports and retention controls."
+        />
+        <Panel title="Administrator sign-in required">
+          <p className="max-w-xl text-xs font-light leading-relaxed text-muted">
+            The admin portal is open to administrators. Sign in with an administrator account to
+            manage ingestion, the FIRMS key and raw payload retention.
+          </p>
+          <Button className="mt-4" onClick={() => navigate("/login")}>
+            Sign in
+          </Button>
+        </Panel>
+      </>
+    );
+  }
 
   return (
     <>

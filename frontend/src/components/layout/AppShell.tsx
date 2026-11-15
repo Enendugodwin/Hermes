@@ -23,8 +23,8 @@ export function AppShell() {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove("theme-dark", "theme-contrast");
-    root.classList.add(theme === "contrast" ? "theme-contrast" : "theme-dark");
+    root.classList.remove("theme-dark", "theme-light", "theme-contrast");
+    root.classList.add(theme === "light" ? "theme-light" : "theme-dark");
   }, [theme]);
 
   useEffect(() => {

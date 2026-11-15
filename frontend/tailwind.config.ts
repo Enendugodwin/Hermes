@@ -38,8 +38,10 @@ const config: Config = {
         danger: "#E65C50",
       },
       fontFamily: {
-        display: ["Inter Variable", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        sans: ["Inter Variable", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Technical mono across the console: one face for labels, data and prose.
+        display: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+        sans: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+        serif: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "monospace"],
         mono: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       fontSize: {

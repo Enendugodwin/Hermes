@@ -1,11 +1,11 @@
 import {
-  Contrast,
   ExternalLink,
   Menu,
   Moon,
   Search,
   Settings2,
   ShieldCheck,
+  Sun,
   UserRound,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -101,18 +101,19 @@ function ProfileMenu() {
 function ThemeToggle() {
   const theme = useUiStore((state) => state.theme);
   const toggleTheme = useUiStore((state) => state.toggleTheme);
-  const isContrast = theme === "contrast";
+  const isLight = theme === "light";
 
   return (
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={isContrast ? "Switch to standard dark theme" : "Switch to high-contrast theme"}
-      title={isContrast ? "High contrast: on" : "High contrast: off"}
+      aria-label={isLight ? "Switch to dark theme" : "Switch to light theme"}
+      title={isLight ? "Light theme: on" : "Dark theme: on"}
+      aria-pressed={isLight}
       className={iconButton}
     >
-      {isContrast ? (
-        <Contrast className="size-[15px] text-accent" aria-hidden />
+      {isLight ? (
+        <Sun className="size-[15px] text-accent" aria-hidden />
       ) : (
         <Moon className="size-[15px]" aria-hidden />
       )}

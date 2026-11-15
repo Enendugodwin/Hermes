@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 import { addDays, formatUtcDate } from "@/lib/time";
 
-export type ThemeName = "dark" | "contrast";
+export type ThemeName = "dark" | "light";
 export type RangePreset = "24h" | "7d" | "30d" | "90d" | "custom";
 
 export const RANGE_PRESETS: { value: RangePreset; label: string; days: number | null }[] = [
@@ -59,7 +59,7 @@ export const useUiStore = create<UiState>()(
       dateRange: initialRange(),
 
       setTheme: (theme) => set({ theme }),
-      toggleTheme: () => set({ theme: get().theme === "dark" ? "contrast" : "dark" }),
+      toggleTheme: () => set({ theme: get().theme === "dark" ? "light" : "dark" }),
       toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
       toggleSidebarCollapsed: () => set({ sidebarCollapsed: !get().sidebarCollapsed }),

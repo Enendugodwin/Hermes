@@ -38,6 +38,22 @@
     --hz-success: 126 235 163;
   }
 
+  /* Light operations mode: paper field, graphite ink, same mission orange. */
+  .theme-light {
+    --hz-bg: 246 246 243;
+    --hz-surface: 255 255 255;
+    --hz-raised: 236 238 235;
+    --hz-line: 22 28 36;
+    --hz-ink: 18 22 28;
+    --hz-muted: 74 84 96;
+    --hz-faint: 104 114 126;
+    --hz-accent: 190 78 24;
+    --hz-azure: 24 92 200;
+    --hz-cyan: 12 108 118;
+    --hz-success: 26 122 78;
+    color-scheme: light;
+  }
+
   * {
     border-color: rgb(var(--hz-line) / 0.08);
   }
